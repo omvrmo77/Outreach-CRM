@@ -1,0 +1,28 @@
+.launch-screen { position: fixed; inset: 0; z-index: 9999; display:grid; place-items:center; overflow:hidden; background:#000; perspective:1200px; animation: launchFade 2.8s ease both; }
+.loader-grid { position:absolute; inset:-20%; background-image:linear-gradient(rgba(255,255,255,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.028) 1px,transparent 1px); background-size:52px 52px; transform:rotateX(67deg) translateY(34%); transform-origin:center; mask-image:linear-gradient(to bottom,transparent,black 35%,transparent 86%); animation:gridDrift 4s linear infinite; }
+.loader-particles { position:absolute; inset:0; }
+.loader-particle { position:absolute; left:var(--x); top:var(--y); width:var(--s); height:var(--s); border-radius:50%; background:#fff; opacity:.28; box-shadow:0 0 12px rgba(255,255,255,.35); animation:particleFly var(--d) ease-in-out infinite alternate; }
+.loader-stage { position:relative; width:min(680px,86vw); height:430px; display:flex; flex-direction:column; align-items:center; justify-content:center; transform-style:preserve-3d; }
+.loader-logo-stack { width:min(430px,64vw); height:210px; position:relative; transform-style:preserve-3d; animation:logoFloat 2.2s ease-in-out infinite alternate; }
+.loader-logo { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; filter:contrast(1.12) brightness(1.12); mix-blend-mode:screen; }
+.loader-logo.layer-1 { transform:translateZ(35px); opacity:1; filter:drop-shadow(0 0 30px rgba(255,255,255,.16)); }
+.loader-logo.layer-2 { transform:translate3d(5px,3px,0); opacity:.26; filter:blur(.4px); }
+.loader-logo.layer-3 { transform:translate3d(-5px,-3px,-35px); opacity:.14; filter:blur(1.2px); }
+.loader-orbit { position:absolute; border:1px solid rgba(255,255,255,.11); border-radius:50%; transform-style:preserve-3d; }
+.orbit-one { width:430px; height:150px; transform:rotateX(73deg) rotateZ(9deg); animation:orbitSpin 4s linear infinite; }
+.orbit-two { width:330px; height:330px; transform:rotateY(76deg) rotateZ(18deg); animation:orbitSpinReverse 5.5s linear infinite; }
+.loader-wordmark { position:absolute; font:700 clamp(90px,19vw,210px)/1 Manrope,sans-serif; letter-spacing:-.09em; color:transparent; -webkit-text-stroke:1px rgba(255,255,255,.025); transform:translateZ(-120px); user-select:none; }
+.loader-copy { margin-top:20px; display:grid; gap:7px; text-align:center; letter-spacing:.22em; }
+.loader-copy span { color:#727272; font-size:9px; }
+.loader-copy strong { color:#f5f5f2; font-size:11px; font-weight:600; animation:copyReveal 1.2s .35s both; }
+.loader-progress { width:min(260px,52vw); height:1px; background:rgba(255,255,255,.1); margin-top:24px; overflow:hidden; }
+.loader-progress i { display:block; height:100%; width:100%; background:linear-gradient(90deg,transparent,#fff,transparent); transform:translateX(-100%); animation:progressSweep 2.3s .18s cubic-bezier(.4,0,.2,1) forwards; }
+@keyframes logoFloat { from{ transform:rotateX(5deg) rotateY(-7deg) translateY(5px)} to{transform:rotateX(-4deg) rotateY(8deg) translateY(-8px)} }
+@keyframes orbitSpin { to{ transform:rotateX(73deg) rotateZ(369deg)} }
+@keyframes orbitSpinReverse { to{ transform:rotateY(76deg) rotateZ(-342deg)} }
+@keyframes particleFly { from{ transform:translate3d(-8px,8px,-30px); opacity:.08 } to{transform:translate3d(12px,-22px,60px); opacity:.42} }
+@keyframes gridDrift { to{ background-position:52px 52px,52px 52px} }
+@keyframes progressSweep { to{transform:translateX(100%)} }
+@keyframes copyReveal { from{opacity:0;letter-spacing:.5em;filter:blur(7px)} to{opacity:1;letter-spacing:.22em;filter:blur(0)} }
+@keyframes launchFade { 0%,82%{opacity:1;visibility:visible} 100%{opacity:0;visibility:hidden} }
+@media (prefers-reduced-motion: reduce){ .launch-screen *, .launch-screen *::before, .launch-screen *::after{animation:none!important} }

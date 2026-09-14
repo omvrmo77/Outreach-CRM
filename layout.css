@@ -1,0 +1,57 @@
+.app-shell { min-height: 100vh; }
+.sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--sidebar-width);
+  padding: 24px 16px 18px;
+  background: rgba(5,5,5,.96);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  z-index: 20;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 2px 8px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.brand-mark {
+  width: 48px;
+  height: 34px;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 6px;
+}
+.brand-copy strong { display: block; font-size: 13px; letter-spacing: .02em; }
+.brand-copy span { display: block; margin-top: 3px; font-size: 11px; color: var(--muted); }
+.sidebar-nav { padding-top: 18px; display: grid; gap: 5px; }
+.sidebar-bottom { margin-top: auto; padding-top: 18px; border-top: 1px solid var(--line); }
+.main-shell { margin-left: var(--sidebar-width); min-height: 100vh; }
+.topbar {
+  height: var(--topbar-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 0 30px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(5,5,5,.82);
+  backdrop-filter: blur(18px);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.page { padding: 30px; max-width: 1640px; margin: 0 auto; }
+.page-header { display: flex; justify-content: space-between; gap: 20px; align-items: flex-end; margin-bottom: 28px; }
+.page-kicker { color: var(--muted); text-transform: uppercase; font-size: 10px; letter-spacing: .18em; margin-bottom: 8px; }
+.page-title { font-size: clamp(28px, 3vw, 42px); font-weight: 600; }
+.page-subtitle { margin-top: 9px; color: var(--muted); font-size: 13px; max-width: 720px; line-height: 1.6; }
+.grid { display: grid; gap: 16px; }
+.grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.span-2 { grid-column: span 2; }
+.grid-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.header-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
