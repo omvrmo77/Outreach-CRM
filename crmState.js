@@ -37,6 +37,7 @@ export const accounts = [
 const backendMasterCompanies={LFG:null,O1:null};
 let backendProfiles=[];
 let backendServerNow='';
+const backendHistoricalConnectionPaging={LFG:{total:0,loaded:0},O1:{total:0,loaded:0}};
 
 const frontendEventType=(type='')=>({
   reply_received:'replied',
@@ -316,6 +317,10 @@ export const hydrateBackendState = (project,snapshot={}) => {
   backendProfiles=Array.isArray(snapshot.profiles)?snapshot.profiles.map(p=>({...p})):[];
   backendServerNow=snapshot.server_now||'';
   backendMasterCompanies[project]=parseMasterCompanyText(snapshot.master_company_text||'');
+  backendHistoricalConnectionPaging[project]={
+    total:Number(snapshot.historical_connection_count||0),
+    loaded:0
+  };
 
   const companyRows=Array.isArray(snapshot.companies)?snapshot.companies:[];
   const contactRows=Array.isArray(snapshot.contacts)?snapshot.contacts:[];
@@ -346,7 +351,7 @@ export const hydrateBackendState = (project,snapshot={}) => {
         targetCategory:rel.target_category||'',priority:rel.priority||'',recommendedTiming:rel.recommended_timing||'',bestPlatform:rel.best_platform||'',
         primaryRoute:rel.primary_route||'',fallbackRoute:rel.fallback_route||'',whyThisContact:rel.why_this_contact||'',desiredOutcome:rel.desired_outcome||'',
         telegramUsername:ct.telegram_username||'',groupChat:rel.group_chat||'',notes:rel.notes||'',addedAt:rel.created_at||'',nextStep:rel.next_step||'Review relationship',
-        status:rel.status||'Company Added',local:false,provisional:Boolean(rel.raw_source?.provisional),deletedAt:null,relationshipIds:[]
+        status:rel.status||'Company Added',local:false,provisional:Boolean(rel.provisional ?? rel.raw_source?.provisional),deletedAt:null,relationshipIds:[]
       };
       companyMap.set(rel.company_id,company);
     }
@@ -363,7 +368,7 @@ export const hydrateBackendState = (project,snapshot={}) => {
 
   state.connections[project]=connectionRows.map(row=>{
     const c=companiesById.get(row.company_id)||{}; const ct=contactsById.get(row.contact_id)||{};
-    const historicalOnly=Boolean(row.raw_source?.historical_connection_only);
+    const historicalOnly=Boolean(row.historical_only ?? row.raw_source?.historical_connection_only);
     return {
       id:row.id,name:ct.full_name||row.contact_name_snapshot||'—',contactRole:ct.title||'',company:c.name||row.company_name_snapshot||'—',companyId:row.company_id||'',contactId:row.contact_id||'',
       provisionalContact:!row.contact_id,owner:historicalOnly?'':backendOwnerName(row.owner_user_id,row.historical_owner_name,profileMap),ownerId:row.owner_user_id||'',accountId:historicalOnly?'':(row.outreach_account_id||''),
@@ -385,8 +390,8 @@ export const hydrateBackendState = (project,snapshot={}) => {
     companiesResearched:Number(row.companies_researched||0),
     meetingsBooked:Number(row.meetings_booked||0),
     meetingsQualified:Number(row.meetings_qualified||0),
-    historical:Boolean(row.raw_source?.reported_totals),
-    sourceKind:row.raw_source?.source_kind||'',
+    historical:Boolean(row.historical ?? row.raw_source?.reported_totals),
+    sourceKind:row.source_kind||row.raw_source?.source_kind||'',
     notes:row.notes||''
   }));
 
@@ -419,7 +424,151 @@ export const hydrateBackendState = (project,snapshot={}) => {
   });
   assignOperationalIds(state.activities[project]);
   repairOperationalContactConsistency(state.activities[project]);
-  save();
+  // Backend snapshots stay in memory. Persisting megabytes of live Supabase state to localStorage
+  // synchronously caused UI freezes and is unnecessary because Supabase is the source of truth.
+  return true;
+};
+
+
+
+export const getHistoricalConnectionPaging = (project) => ({...(backendHistoricalConnectionPaging[project]||{total:0,loaded:0})});
+
+const mapBackendConnectionRow = (project,row) => {
+  const profileMap=new Map(backendProfiles.map(p=>[p.id,p]));
+  const company=getRawCompany(project,row.company_id||'');
+  const contact=company?.contacts?.find(c=>c.id===row.contact_id)||null;
+  const historicalOnly=Boolean(row.historical_only ?? row.raw_source?.historical_connection_only);
+  return {
+    id:row.id,
+    name:contact?.name||row.contact_name_snapshot||'—',
+    contactRole:contact?.role||row.contact_title||'',
+    company:company?.company||row.company_name_snapshot||'—',
+    companyId:row.company_id||'',
+    contactId:row.contact_id||'',
+    provisionalContact:!row.contact_id,
+    owner:historicalOnly?'':backendOwnerName(row.owner_user_id,row.historical_owner_name,profileMap),
+    ownerId:row.owner_user_id||'',
+    accountId:historicalOnly?'':(row.outreach_account_id||''),
+    status:historicalOnly?'Historical':(row.status||'Pending'),
+    sentAt:historicalOnly?(row.sent_at||null):(row.sent_at||row.created_at),
+    acceptedAt:row.accepted_at||null,
+    messageSentAt:row.message_sent_at||null,
+    acceptanceMethod:row.acceptance_method||'',
+    historicalOnly,
+    local:false,
+    deletedAt:null
+  };
+};
+
+export const mergeBackendConnections = (project,rows=[]) => {
+  if(!PROJECTS.includes(project)||!Array.isArray(rows)) return 0;
+  const current=state.connections[project]||[];
+  const byId=new Map(current.map(x=>[x.id,x]));
+  rows.forEach(row=>{
+    if(!row?.id) return;
+    const mapped=mapBackendConnectionRow(project,row);
+    byId.set(row.id,mapped);
+    if(mapped.company&&mapped.company!=='—'){
+      backendMasterCompanies[project]=[...new Set([...(backendMasterCompanies[project]||[]),mapped.company])];
+    }
+  });
+  state.connections[project]=[...byId.values()];
+  return rows.length;
+};
+
+export const mergeBackendHistoricalConnections = (project,payload={}) => {
+  const rows=Array.isArray(payload.rows)?payload.rows:[];
+  mergeBackendConnections(project,rows);
+  const current=backendHistoricalConnectionPaging[project]||{total:0,loaded:0};
+  const total=Number(payload.total ?? current.total ?? 0);
+  const loadedIds=new Set((state.connections[project]||[]).filter(x=>x.historicalOnly).map(x=>x.id));
+  backendHistoricalConnectionPaging[project]={total,loaded:loadedIds.size};
+  return getHistoricalConnectionPaging(project);
+};
+
+export const mergeBackendCompanyBundle = (project,companyId,bundle={}) => {
+  if(!PROJECTS.includes(project)||!companyId) return false;
+  const profileMap=new Map(backendProfiles.map(p=>[p.id,p]));
+  const c=bundle.company||{};
+  const contactRows=Array.isArray(bundle.contacts)?bundle.contacts:[];
+  const relationshipRows=Array.isArray(bundle.relationships)?bundle.relationships:[];
+  const connectionRows=Array.isArray(bundle.connections)?bundle.connections:[];
+  const eventRows=Array.isArray(bundle.events)?bundle.events:[];
+  const contactsById=new Map(contactRows.map(x=>[x.id,x]));
+  const relByContact=new Map();
+  relationshipRows.forEach(r=>{
+    if(!relByContact.has(r.contact_id)) relByContact.set(r.contact_id,[]);
+    relByContact.get(r.contact_id).push(r);
+  });
+
+  let company=null;
+  for(const rel of relationshipRows){
+    const ct=contactsById.get(rel.contact_id)||{};
+    const owner=backendOwnerName(rel.owner_user_id,rel.historical_owner_name,profileMap);
+    if(!company){
+      company={
+        id:companyId,company:c.name||rel.company_name_snapshot||getRawCompany(project,companyId)?.company||'Unknown company',contacts:[],primaryContactId:'',owner,
+        agenda:rel.agenda||rel.lead_type||'—',projectSummary:rel.project_summary||'',whyInteresting:rel.why_interesting||'',
+        angle:rel.potential_lfg_angle||rel.product_angle||'',personality:ct.personality||'',fundingStatus:rel.funding_status||'',website:c.website||'',
+        targetCategory:rel.target_category||'',priority:rel.priority||'',recommendedTiming:rel.recommended_timing||'',bestPlatform:rel.best_platform||'',
+        primaryRoute:rel.primary_route||'',fallbackRoute:rel.fallback_route||'',whyThisContact:rel.why_this_contact||'',desiredOutcome:rel.desired_outcome||'',
+        telegramUsername:ct.telegram_username||'',groupChat:rel.group_chat||'',notes:rel.notes||'',addedAt:rel.created_at||'',nextStep:rel.next_step||'Review relationship',
+        status:rel.status||'Company Added',local:false,provisional:Boolean(rel.provisional ?? rel.raw_source?.provisional),deletedAt:null,relationshipIds:[]
+      };
+    }
+    company.relationshipIds.push(rel.id);
+    if(!company.contacts.some(x=>x.id===rel.contact_id)){
+      company.contacts.push({
+        id:rel.contact_id,name:ct.full_name||rel.contact_name_snapshot||'—',role:ct.title||'',accountId:rel.outreach_account_id||'',createdAt:ct.created_at||rel.created_at||'',
+        relationshipId:rel.id,relationshipIds:(relByContact.get(rel.contact_id)||[]).map(x=>x.id),owner,ownerId:rel.owner_user_id||''
+      });
+    }
+    if(!company.primaryContactId) company.primaryContactId=rel.contact_id||'';
+  }
+
+  state.companies[project]=(state.companies[project]||[]).filter(x=>x.id!==companyId);
+  if(company){
+    state.companies[project].push(company);
+    backendMasterCompanies[project]=[...new Set([...(backendMasterCompanies[project]||[]),company.company])];
+  }
+
+  state.connections[project]=(state.connections[project]||[]).filter(x=>x.companyId!==companyId);
+  connectionRows.forEach(row=>state.connections[project].push(mapBackendConnectionRow(project,row)));
+
+  const eventLabel={connection_sent:'Connection sent',connection_accepted:'Connection accepted',company_added:'Company added',contact_added:'Contact added',message_sent:'Message sent',
+    followup_scheduled:'Follow-up scheduled',followup_sent:'Follow-up sent',replied:'They replied',meeting_booked:'Meeting booked',meeting_scheduled:'Meeting scheduled',meeting_rescheduled:'Meeting rescheduled',meeting_done:'Meeting done',note_added:'Note added'};
+  const companyName=company?.company||c.name||'';
+  const mappedEvents=eventRows.map(row=>{
+    const type=frontendEventType(row.event_type); const ct=contactsById.get(row.contact_id)||{}; const metadata=row.metadata||{};
+    let detail=row.note||'';
+    if(['message_sent','followup_sent'].includes(type)) detail=row.message_text||row.note||'';
+    else if(type==='replied') detail=row.reply_text||row.note||'';
+    return {
+      id:row.id,recordedAt:row.recorded_at||row.occurred_at,deletedAt:null,actionGroupId:row.action_group_id||'',companyId:row.company_id||companyId,company:companyName||row.company_name_snapshot||'',
+      contactId:row.contact_id||'',contact:ct.full_name||row.contact_name_snapshot||'',contactRole:ct.title||row.contact_title_snapshot||'',
+      owner:backendOwnerName(row.relationship_owner_user_id,row.relationship_owner_snapshot,profileMap),ownerId:row.relationship_owner_user_id||'',actor:row.actor_name_snapshot||backendOwnerName(row.actor_user_id,'',profileMap),
+      actorId:row.actor_user_id||'',accountId:row.outreach_account_id||'',type,label:eventLabel[type]||type,at:row.occurred_at,
+      scheduledFor:row.scheduled_for||row.follow_up_due_at||null,previousScheduledFor:row.previous_scheduled_for||null,
+      detail,detailLabel:metadata.detail_label||'',secondaryDetail:metadata.secondary_detail||'',secondaryLabel:metadata.secondary_label||'',note:row.note||'',
+      meetingId:row.meeting_id||'',followupId:row.followup_id||'',sourceConnectionId:row.connection_id||'',sourceConfidence:row.source_confidence||'',
+      inferredFromActivityId:metadata.inferred_from_event_id||'',reportOnly:Boolean(metadata.report_only_historical),metadata
+    };
+  });
+  assignOperationalIds(mappedEvents);
+  repairOperationalContactConsistency(mappedEvents);
+  state.activities[project]=(state.activities[project]||[]).filter(x=>x.companyId!==companyId).concat(mappedEvents);
+
+  const mappedAudit=(Array.isArray(bundle.change_history)?bundle.change_history:[]).map(row=>{
+    const before=row.before_values||{}; const after=row.after_values||{};
+    return {
+      id:String(row.id||createId('audit')),companyId,company:companyName||after.company_name_snapshot||before.company_name_snapshot||after.name||before.name||'',
+      activityId:row.table_name==='crm_events'?String(row.record_id||''):'',operation:String(row.operation||'').toLowerCase(),
+      actor:row.changed_by_snapshot||backendOwnerName(row.changed_by_user_id,'',profileMap),actorId:row.changed_by_user_id||'',at:row.changed_at||new Date().toISOString(),
+      before,after,reason:row.reason||'',table:row.table_name||''
+    };
+  });
+  state.auditTrail[project]=(state.auditTrail[project]||[]).filter(x=>x.companyId!==companyId).concat(mappedAudit);
+  if(state.companyOverrides?.[project]) delete state.companyOverrides[project][companyId];
   return true;
 };
 

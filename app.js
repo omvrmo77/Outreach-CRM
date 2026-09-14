@@ -9,7 +9,7 @@ import { currentOwner } from './access.js';
 import {
   addConnection, addConnectionsBulk, setSelectedAccount, updateConnectionStatus, findConnection, getAccount, getConnections, getSelectedAccount,
   addCompany, getCompany, getActivities, recordCompanyAction, deleteLocalCompany, deleteActivity, updateActivity, undoLastAction, getActivityAnalytics, exportPrototypeSnapshot,
-  getNoRepeatCompanies, canonicalizeIdentity, getCompanyContacts, getMeetingRecords, getFollowupRecords
+  getNoRepeatCompanies, canonicalizeIdentity, getCompanyContacts, getMeetingRecords, getFollowupRecords, getHistoricalConnectionPaging
 } from './crmState.js';
 import { esc } from './html.js';
 import { renderAnalyticsDayPanel } from './activityAnalytics.js';
@@ -17,11 +17,12 @@ import { activityActions } from './activityActions.js';
 import { combine12hTime, toDateInputValue, getWorkspaceTimeValue, getWorkspaceDateKey, formatDate, formatDateTime, timeParts12h, workspaceDateTimeToDate, addWorkspaceDays, validateWorkspaceDateTime } from './date.js';
 import { safeDecodeRouteComponent } from './route.js';
 import { parseBatchCandidates, batchCheckSummary } from './batchCheck.js';
-import { isBackendEnabled, syncBackendState, backendAddConnection, backendAddConnectionsBulk, backendAddCompany, backendRecordCompanyAction, backendUpdateActivity, backendDeleteActivity, backendUndoLastAction, backendArchiveCompany, backendSetProfileAccess, backendCheckBatch } from './backendSync.js';
+import { isBackendEnabled, syncBackendState, backendAddConnection, backendAddConnectionsBulk, backendAddCompany, backendRecordCompanyAction, backendUpdateActivity, backendDeleteActivity, backendUndoLastAction, backendArchiveCompany, backendSetProfileAccess, backendCheckBatch, backendLoadHistoricalConnections } from './backendSync.js';
 
 const app = document.getElementById('app');
 let launching = true;
 let parsedCompanyDraft = null;
+const historicalLoadInFlight=new Set();
 
 const showToast = (id, text) => {
   const toast=document.getElementById(id);
@@ -217,6 +218,27 @@ const bindConnections = () => {
       row.style.display=value==='ALL'||row.dataset.status===value?'':'none';
     });
   }));
+
+  const loadHistorical=async()=>{
+    if(!isBackendEnabled()||getRoute()!=='connections'||historicalLoadInFlight.has(project)) return;
+    const paging=getHistoricalConnectionPaging(project);
+    if(paging.loaded>=paging.total) return;
+    historicalLoadInFlight.add(project);
+    const button=document.getElementById('load-more-historical-connections');
+    if(button){button.disabled=true;button.textContent='Loading historical rows…';}
+    try{
+      await backendLoadHistoricalConnections(project,{offset:paging.loaded,limit:50});
+      if(getRoute()==='connections') render();
+    }catch(error){
+      console.error('Historical connection page failed',error);
+      if(button){button.disabled=false;button.textContent='Retry historical rows';}
+    }finally{historicalLoadInFlight.delete(project);}
+  };
+  document.getElementById('load-more-historical-connections')?.addEventListener('click',loadHistorical);
+  const paging=getHistoricalConnectionPaging(project);
+  if(getRoute()==='connections'&&paging.total>0&&paging.loaded===0&&!historicalLoadInFlight.has(project)){
+    queueMicrotask(loadHistorical);
+  }
 };
 
 const bindAddCompany = () => {
@@ -538,7 +560,7 @@ const bindCompanyProfile = () => {
       let updated;
       try{
         updated=isBackendEnabled()
-          ? await backendUpdateActivity(project,editId,{type,at,scheduledFor,detail,detailLabel:config.detailLabel||'Details',secondaryDetail,secondaryLabel:config.secondaryLabel||'',contactId,accountId})
+          ? await backendUpdateActivity(project,companyName,editId,{type,at,scheduledFor,detail,detailLabel:config.detailLabel||'Details',secondaryDetail,secondaryLabel:config.secondaryLabel||'',contactId,accountId})
           : updateActivity(project,editId,{at,scheduledFor,detail,detailLabel:config.detailLabel||'Details',secondaryDetail,secondaryLabel:config.secondaryLabel||'',contactId,contact:selectedContact?.name||'',contactRole:selectedContact?.role||'',accountId},actor);
       }catch(error){showToast('profile-toast',error.message||'Activity could not be updated');return;}
       if(!updated||updated.ok===false){ showToast('profile-toast','Activity could not be updated. Check the timestamp and relationship chronology.'); return; }
@@ -562,7 +584,7 @@ const bindCompanyProfile = () => {
     const activityId=btn.dataset.deleteActivity; if(!activityId) return;
     if(confirm('Delete this activity? Dashboard, reports and company status will update automatically.')){
       try{
-        if(isBackendEnabled()) await backendDeleteActivity(project,activityId,'Activity deleted from company profile');
+        if(isBackendEnabled()) await backendDeleteActivity(project,companyName,activityId,'Activity deleted from company profile');
         else deleteActivity(project,activityId,getCurrentUser()?.displayName||currentOwner());
         render(); showToast('profile-toast','Activity deleted');
       }catch(error){showToast('profile-toast',error.message||'Activity could not be deleted');}
@@ -909,13 +931,7 @@ window.addEventListener('hashchange', render);
 render();
 
 const waitForFrontendReady = async () => {
-  const waits=[];
-  if(document.fonts?.ready) waits.push(document.fonts.ready.catch(()=>{}));
-  const logo=document.querySelector('link[rel="preload"][as="image"]');
-  if(logo?.href){
-    waits.push(new Promise(resolve=>{ const img=new Image(); img.onload=img.onerror=resolve; img.src=logo.href; }));
-  }
-  await Promise.all(waits);
+  // Do not block app launch on remote fonts or decorative images. They can finish loading after the CRM shell appears.
   if(isBackendEnabled()){
     try{
       const restored=await initializeAuth();

@@ -1,7 +1,15 @@
 import { backendConfig } from './backendConfig.js';
 import { backendOperations } from './crmApi.js';
 import { getAccessToken, getCurrentUser } from './authState.js';
-import { hydrateBackendState, getRelationshipId, getCompany, getActivities } from './crmState.js';
+import {
+  hydrateBackendState,
+  mergeBackendCompanyBundle,
+  mergeBackendConnections,
+  mergeBackendHistoricalConnections,
+  getRelationshipId,
+  getCompany,
+  getActivities
+} from './crmState.js';
 
 export const isBackendEnabled=()=>Boolean(backendConfig.enabled);
 
@@ -19,6 +27,30 @@ export const syncBackendState=async(project)=>{
   return snapshot;
 };
 
+export const refreshBackendCompany=async(project,companyId)=>{
+  if(!companyId) return null;
+  const token=await tokenOrThrow();
+  const bundle=await backendOperations.companyBundle(token,{productCode:project,companyId});
+  mergeBackendCompanyBundle(project,companyId,bundle||{});
+  return bundle;
+};
+
+const refreshConnectionsByIds=async(project,ids=[])=>{
+  const unique=[...new Set(ids.filter(Boolean))];
+  if(!unique.length) return [];
+  const token=await tokenOrThrow();
+  const rows=await backendOperations.connectionsByIds(token,{productCode:project,ids:unique});
+  mergeBackendConnections(project,Array.isArray(rows)?rows:[]);
+  return rows;
+};
+
+export const backendLoadHistoricalConnections=async(project,{offset=0,limit=50}={})=>{
+  const token=await tokenOrThrow();
+  const payload=await backendOperations.historicalConnectionsPage(token,{productCode:project,offset,limit});
+  mergeBackendHistoricalConnections(project,payload||{});
+  return payload||{rows:[],total:0,offset,limit};
+};
+
 export const backendAddConnection=async(project,payload)=>{
   const token=await tokenOrThrow();
   const rows=await backendOperations.addConnectionsBatch(token,{
@@ -28,7 +60,7 @@ export const backendAddConnection=async(project,payload)=>{
   const row=Array.isArray(rows)?rows[0]:null;
   if(!row) return {ok:false,reason:'backend-error'};
   if(row.status!=='added') return {ok:false,reason:row.status,...row};
-  await syncBackendState(project);
+  if(row.connection_id) await refreshConnectionsByIds(project,[row.connection_id]);
   return {ok:true,connectionId:row.connection_id,...row};
 };
 
@@ -36,7 +68,8 @@ export const backendAddConnectionsBulk=async(project,{items,accountId,sentAt})=>
   const token=await tokenOrThrow();
   const rows=await backendOperations.addConnectionsBatch(token,{productCode:project,accountId,sentAt,items});
   const list=Array.isArray(rows)?rows:[];
-  await syncBackendState(project);
+  const addedIds=list.filter(x=>x.status==='added').map(x=>x.connection_id).filter(Boolean);
+  if(addedIds.length) await refreshConnectionsByIds(project,addedIds);
   return {
     added:list.filter(x=>x.status==='added').length,
     duplicates:list.filter(x=>x.status==='duplicate').length,
@@ -57,14 +90,17 @@ export const backendAddCompany=async(project,parsed,{accountId,messageBody,messa
     if(result?.reason==='duplicate-contact') result.reason='duplicate';
     return result||{ok:false,reason:'backend-error'};
   }
-  await syncBackendState(project);
-  const company=getCompany(project,result.company_id||companyId||parsed.Company||'');
+  const resolvedCompanyId=result.company_id||companyId||'';
+  if(resolvedCompanyId) await refreshBackendCompany(project,resolvedCompanyId);
+  else await syncBackendState(project);
+  const company=getCompany(project,resolvedCompanyId||parsed.Company||'');
   return {...result,company,matchedConnection:Boolean(result.connection_id),reusedInitialMessage:Boolean(result.reused_message)};
 };
 
 const backendEventType=(type='')=>({replied:'reply_received',followup_sent:'follow_up_sent',followup_scheduled:'follow_up_scheduled'}[type]||type);
 
 export const backendRecordCompanyAction=async(project,companyRef,type,{at,scheduledFor,detail='',detailLabel='',secondaryDetail='',secondaryLabel='',contactId='',accountId='',meetingId='',followupId=''}={})=>{
+  const company=getCompany(project,companyRef);
   const relationshipId=getRelationshipId(project,companyRef,contactId);
   if(!relationshipId) throw new Error('This contact is not linked to a backend relationship yet.');
   const token=await tokenOrThrow();
@@ -87,11 +123,12 @@ export const backendRecordCompanyAction=async(project,companyRef,type,{at,schedu
     p_followup_id:followupId||null,
     p_metadata:{detail_label:detailLabel||'',secondary_detail:secondaryDetail||'',secondary_label:secondaryLabel||''}
   });
-  await syncBackendState(project);
+  if(company?.id) await refreshBackendCompany(project,company.id);
   return result;
 };
 
-export const backendUpdateActivity=async(project,activityId,{at,scheduledFor,detail='',secondaryDetail='',secondaryLabel='',detailLabel='',contactId='',accountId='',type=''}={})=>{
+export const backendUpdateActivity=async(project,companyRef,activityId,{at,scheduledFor,detail='',secondaryDetail='',secondaryLabel='',detailLabel='',contactId='',accountId='',type=''}={})=>{
+  const company=getCompany(project,companyRef);
   const token=await tokenOrThrow();
   const eventType=type||'';
   const result=await backendOperations.updateEvent(token,{
@@ -107,14 +144,15 @@ export const backendUpdateActivity=async(project,activityId,{at,scheduledFor,det
     p_contact_id:contactId||null,
     p_metadata:{detail_label:detailLabel||'',secondary_detail:secondaryDetail||'',secondary_label:secondaryLabel||''}
   });
-  await syncBackendState(project);
+  if(company?.id) await refreshBackendCompany(project,company.id);
   return result;
 };
 
-export const backendDeleteActivity=async(project,eventId,reason='Activity deleted')=>{
+export const backendDeleteActivity=async(project,companyRef,eventId,reason='Activity deleted')=>{
+  const company=getCompany(project,companyRef);
   const token=await tokenOrThrow();
   const result=await backendOperations.deleteEvent(token,{eventId,reason});
-  await syncBackendState(project);
+  if(company?.id) await refreshBackendCompany(project,company.id);
   return result;
 };
 
@@ -127,18 +165,17 @@ export const backendUndoLastAction=async(project,companyRef,contactId='')=>{
   if(!relationshipId) return {ok:false,reason:'nothing-to-undo'};
   const token=await tokenOrThrow();
   const result=await backendOperations.undoLastAction(token,{relationshipId});
-  await syncBackendState(project);
+  if(company?.id) await refreshBackendCompany(project,company.id);
   return result;
 };
 
 export const backendArchiveCompany=async(project,companyId)=>{
   const token=await tokenOrThrow();
   const result=await backendOperations.archiveCompany(token,{productCode:project,companyId,reason:'Relationship archived from CRM'});
-  await syncBackendState(project);
+  await refreshBackendCompany(project,companyId);
   return result;
 };
 
 export const backendTeam=async()=>backendOperations.team(await tokenOrThrow());
 export const backendSetProfileAccess=async(payload)=>backendOperations.setProfileAccess(await tokenOrThrow(),payload);
-
 export const backendCheckBatch=async(project,items)=>backendOperations.checkBatch(await tokenOrThrow(),{productCode:project,items});

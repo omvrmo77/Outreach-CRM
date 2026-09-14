@@ -558,3 +558,6 @@ a.profile-access-card:hover { border-color:rgba(255,255,255,.2); }
   .batch-result-row { grid-template-columns:1fr; }
   .batch-result-status { justify-self:start; }
 }
+
+/* Performance pass: historical connection archive is loaded in small pages instead of blocking CRM startup. */
+.historical-connection-loader{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 4px 2px;flex-wrap:wrap}

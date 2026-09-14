@@ -1,5 +1,5 @@
 import { getProject } from './projectState.js';
-import { accounts, getSelectedAccount, getConnections, getAccount, getCompanies } from './crmState.js';
+import { accounts, getSelectedAccount, getConnections, getAccount, getCompanies, getHistoricalConnectionPaging } from './crmState.js';
 import { icon } from './icons.js';
 import { formatDateTime, toDateInputValue, getWorkspaceTimeValue, timeParts12h, hourOptions12h, minuteOptions, periodOptions } from './date.js';
 import { esc } from './html.js';
@@ -33,6 +33,7 @@ export const connectionsPage = () => {
   const knownContactOptions=knownContacts.map(({company,contact})=>`<option value="${esc(contact.id)}" data-company-id="${esc(company.id)}" data-person-name="${esc(contact.name)}" data-company-name="${esc(company.company)}">${esc(company.company)} — ${esc(contact.name)}${contact.role?` — ${esc(contact.role)}`:''}</option>`).join('');
   const pending=rows.filter(x=>x.status==='Pending').length;
   const messaged=rows.filter(x=>x.status==='Message Sent').length;
+  const historicalPaging=getHistoricalConnectionPaging(p);
 
   return `<main class="page">
     <div class="page-header"><div><div class="page-kicker">${p} / Connections</div><h1 class="page-title">Connections</h1></div><div class="header-actions"><button class="button" id="copy-pending-connections">${icon('copy')} Copy pending</button></div></div>
@@ -84,6 +85,7 @@ export const connectionsPage = () => {
     <div class="table-wrap data-list-frame"><table><thead><tr><th>Person</th><th>Company</th><th>Account</th><th>Owner</th><th>Sent / Added</th><th>Accepted</th><th>Status</th><th></th></tr></thead><tbody id="connections-body">
       ${rows.length ? rows.map(r=>{const a=r.historicalOnly?null:getAccount(r.accountId);return `<tr data-connection-row data-status="${esc(r.status)}"><td class="cell-company"><strong>${esc(r.name)}</strong>${r.contactRole?`<small class="cell-muted">${esc(r.contactRole)}</small>`:''}</td><td>${esc(r.company)}</td><td>${r.historicalOnly?'<span class="cell-muted">—</span>':`<span class="account-badge">${esc(a.label)}</span>`}</td><td>${r.historicalOnly?'<span class="cell-muted">—</span>':esc(r.owner)}</td><td class="cell-muted">${r.historicalOnly?'Date not in source':formatDateTime(r.sentAt)}</td><td class="cell-muted">${r.historicalOnly?'—':(r.acceptedAt?formatDateTime(r.acceptedAt):'—')}</td><td><span class="status ${r.status==='Accepted'?'replied':r.status==='Message Sent'?'sent':''}">${esc(r.status)}</span></td><td class="table-action-cell">${rowActions(r,readOnly)}</td></tr>`;}).join('') : '<tr><td colspan="8" class="cell-muted">No connections yet.</td></tr>'}
     </tbody></table></div>
+    ${historicalPaging.total?`<div class="historical-connection-loader"><span class="section-meta">Historical archive: ${historicalPaging.loaded.toLocaleString()} / ${historicalPaging.total.toLocaleString()} loaded</span>${historicalPaging.loaded<historicalPaging.total?`<button class="button" id="load-more-historical-connections" type="button">Load 50 more historical rows</button>`:''}</div>`:''}
     <div id="connection-toast" class="toast">Saved</div>
   </main>`;
 };
