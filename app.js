@@ -4,7 +4,7 @@ import { topbar } from './topbar.js';
 import { loader } from './loader.js';
 import { getProject, setProject } from './projectState.js';
 import { setOwner, setRange, setDay } from './managerState.js';
-import { authenticate, initializeAuth, signUp, claimFirstAdmin, isAuthenticated, signOut, getCurrentUser, canManage, isOutreachAccount, isManagerAccount } from './authState.js';
+import { authenticate, initializeAuth, claimFirstAdmin, acceptInvitation, clearVerificationReturn, isAuthenticated, signOut, getCurrentUser, canManage, isOutreachAccount, isManagerAccount } from './authState.js';
 import { currentOwner } from './access.js';
 import {
   addConnection, addConnectionsBulk, setSelectedAccount, updateConnectionStatus, findConnection, getAccount, getConnections, getSelectedAccount,
@@ -17,7 +17,7 @@ import { activityActions } from './activityActions.js';
 import { combine12hTime, toLocalDateInputValue, getDeviceTimeValue, getDeviceDateKey, getWorkspaceDateKey, formatDate, formatDateTime, timeParts12h, localDateTimeToDate, addWorkspaceDays, validateLocalDateTime } from './date.js';
 import { safeDecodeRouteComponent } from './route.js';
 import { parseBatchCandidates, batchCheckSummary } from './batchCheck.js';
-import { isBackendEnabled, syncBackendState, backendAddConnection, backendAddConnectionsBulk, backendAddCompany, backendRecordCompanyAction, backendUpdateActivity, backendDeleteActivity, backendUndoLastAction, backendArchiveCompany, backendSetProfileAccess, backendCheckBatch, backendLoadHistoricalConnections } from './backendSync.js';
+import { isBackendEnabled, syncBackendState, backendAddConnection, backendAddConnectionsBulk, backendAddCompany, backendRecordCompanyAction, backendUpdateActivity, backendDeleteActivity, backendUndoLastAction, backendArchiveCompany, backendSetProfileAccess, backendInviteMember, backendCheckBatch, backendLoadHistoricalConnections } from './backendSync.js';
 
 const app = document.getElementById('app');
 let launching = true;
@@ -730,6 +730,37 @@ const bindActivityAnalytics = () => {
 };
 
 const bindManagementViews = () => {
+  const inviteForm=document.getElementById('team-invite-form');
+  if(inviteForm) inviteForm.addEventListener('submit',async(e)=>{
+    e.preventDefault();
+    const fullName=document.getElementById('team-invite-name')?.value.trim()||'';
+    const email=document.getElementById('team-invite-email')?.value.trim()||'';
+    const role=document.getElementById('team-invite-role')?.value||'team_member';
+    const error=document.getElementById('team-invite-error');
+    const resultBox=document.getElementById('team-invite-result');
+    const button=inviteForm.querySelector('button[type="submit"]');
+    if(error) error.textContent='';
+    if(resultBox){resultBox.classList.add('hidden');resultBox.innerHTML='';}
+    button.disabled=true;button.classList.add('loading');
+    try{
+      const result=await backendInviteMember({email,fullName,role});
+      const invitation=result?.invitation;
+      if(!result?.ok||!invitation?.invite_url) throw new Error('Invitation link was not created.');
+      if(resultBox){
+        resultBox.classList.remove('hidden');
+        resultBox.innerHTML=`<div><strong>Invitation ready</strong><span>${esc(invitation.email)} · expires ${esc(formatDateTime(invitation.expires_at))}</span></div><div class="team-invite-link-row"><input id="team-invite-link" readonly value="${esc(invitation.invite_url)}"><button class="mini-action" id="copy-team-invite-link" type="button">Copy link</button></div><small>Send this private one-time link to the invited person. They will create their password from it.</small>`;
+        document.getElementById('copy-team-invite-link')?.addEventListener('click',async()=>{
+          const input=document.getElementById('team-invite-link');
+          try{await navigator.clipboard.writeText(input?.value||'');}
+          catch{input?.select();document.execCommand('copy');}
+          showToast('team-toast','Invitation link copied');
+        });
+      }
+      inviteForm.reset();
+      showToast('team-toast','Invitation created');
+    }catch(err){if(error)error.textContent=err?.message||'Invitation could not be created.';}
+    finally{button.disabled=false;button.classList.remove('loading');}
+  });
   document.querySelectorAll('[data-team-report]').forEach(btn=>btn.addEventListener('click',()=>{
     setOwner(btn.dataset.teamReport||'ALL');
     setRange('7D');
@@ -743,7 +774,7 @@ const bindManagementViews = () => {
     if(!userId) return;
     btn.disabled=true;
     try{
-      if(action==='reject') await backendSetProfileAccess({userId,role,approvalStatus:'rejected',isActive:false});
+      if(action==='reject') await backendSetProfileAccess({userId,role,approvalStatus:'disabled',isActive:false});
       else if(action==='deactivate') await backendSetProfileAccess({userId,role,approvalStatus:'approved',isActive:false});
       else await backendSetProfileAccess({userId,role,approvalStatus:'approved',isActive:true});
       await syncBackendState(getProject());
@@ -815,14 +846,17 @@ const bind = () => {
     render();
   }));
 
+  const verificationButton=document.getElementById('verification-go-login');
+  if(verificationButton) verificationButton.addEventListener('click',()=>{
+    clearVerificationReturn();
+    render();
+  });
+
   const login = document.querySelector('#crm-login');
-  const signup = document.querySelector('#crm-signup');
+  const inviteForm = document.querySelector('#crm-accept-invite');
   const bootstrap = document.querySelector('#crm-bootstrap');
-  const showLogin=()=>{login?.classList.remove('hidden');signup?.classList.add('hidden');bootstrap?.classList.add('hidden');};
-  const showSignup=()=>{login?.classList.add('hidden');signup?.classList.remove('hidden');bootstrap?.classList.add('hidden');};
-  const showBootstrap=()=>{login?.classList.add('hidden');signup?.classList.add('hidden');bootstrap?.classList.remove('hidden');};
-  document.getElementById('show-signup')?.addEventListener('click',showSignup);
-  document.getElementById('show-login')?.addEventListener('click',showLogin);
+  const showLogin=()=>{login?.classList.remove('hidden');bootstrap?.classList.add('hidden');};
+  const showBootstrap=()=>{login?.classList.add('hidden');bootstrap?.classList.remove('hidden');};
   document.getElementById('bootstrap-back-login')?.addEventListener('click',showLogin);
 
   if (login) login.addEventListener('submit', async (e) => {
@@ -850,19 +884,22 @@ const bind = () => {
     setTimeout(() => { location.hash = '#/home'; render(); }, 160);
   });
 
-  if(signup) signup.addEventListener('submit',async(e)=>{
+  if(inviteForm) inviteForm.addEventListener('submit',async(e)=>{
     e.preventDefault();
-    const fullName=document.getElementById('signup-name')?.value.trim()||'';
-    const email=document.getElementById('signup-email')?.value.trim()||'';
-    const password=document.getElementById('signup-password')?.value||'';
-    const error=document.getElementById('signup-error'); const button=signup.querySelector('button[type="submit"]');
-    error.textContent=''; button.disabled=true; button.classList.add('loading');
-    const result=await signUp(email,password,fullName);
+    const password=document.getElementById('invite-password')?.value||'';
+    const confirm=document.getElementById('invite-password-confirm')?.value||'';
+    const error=document.getElementById('invite-error');
+    const button=inviteForm.querySelector('button[type="submit"]');
+    error.textContent='';
+    if(password.length<8){error.textContent='Password must be at least 8 characters.';return;}
+    if(password!==confirm){error.textContent='Passwords do not match.';return;}
+    button.disabled=true; button.classList.add('loading');
+    const result=await acceptInvitation(password);
     button.disabled=false; button.classList.remove('loading');
-    if(!result.ok){error.textContent=result.message||'Account could not be created.';return;}
-    if(result.requiresConfirmation){error.textContent='Check your email to confirm the account, then return here and sign in.';return;}
-    if(result.bootstrapAvailable){showBootstrap();return;}
-    error.textContent='Account created. An LFG admin must approve it before you can enter the CRM.';
+    if(!result.ok){error.textContent=result.message||'Invitation could not be accepted.';return;}
+    const user=getCurrentUser(); setOwner(user?.role==='outreach'?(user.ownerName||user.displayName):'ALL'); setRange('7D');
+    try{await syncBackendState(getProject());}catch(syncError){error.textContent=syncError.message||'Account activated, but CRM data could not be loaded.';return;}
+    location.hash='#/home'; render();
   });
 
   if(bootstrap) bootstrap.addEventListener('submit',async(e)=>{

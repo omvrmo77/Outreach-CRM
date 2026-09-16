@@ -621,3 +621,23 @@ a.profile-access-card:hover { border-color:rgba(255,255,255,.2); }
 .scheduled-event small,
 .summary-stat small { display:block; color:var(--muted); font-size:8px; line-height:1.35; font-weight:400; }
 .scheduled-event small { margin-top:3px; }
+
+.team-invite-card { margin-bottom:16px; }
+.team-invite-card .section-copy { margin-top:7px; color:var(--muted); font-size:11px; line-height:1.55; }
+.team-invite-form { display:grid; grid-template-columns:1fr 1.2fr .9fr auto; gap:10px; align-items:end; margin-top:14px; }
+.team-invite-submit { display:flex; align-items:end; }
+.team-invite-submit .button { min-height:42px; white-space:nowrap; }
+.team-invite-result { margin-top:12px; padding:12px; border:1px solid var(--line); border-radius:12px; background:#080808; display:grid; gap:10px; }
+.team-invite-result.hidden { display:none; }
+.team-invite-result > div:first-child { display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center; }
+.team-invite-result > div:first-child span,.team-invite-result small { color:var(--muted); font-size:10px; }
+.team-invite-link-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; }
+.team-invite-link-row input { width:100%; border:1px solid var(--line); border-radius:10px; background:#050505; color:var(--text); padding:10px 11px; font-size:10px; }
+
+
+.verification-success { display:grid; gap:16px; margin-top:18px; }
+.verification-success-icon { width:58px; height:58px; border-radius:50%; display:grid; place-items:center; color:var(--success); border:1px solid rgba(123,224,165,.3); background:rgba(123,224,165,.07); box-shadow:0 0 38px rgba(123,224,165,.08); }
+.verification-success-icon svg { width:28px; height:28px; stroke-width:2; }
+.verification-success h2 { margin-top:0; }
+.verification-success > p { color:var(--muted); font-size:12px; line-height:1.7; }
+.verification-home-link { display:flex; justify-content:center; align-items:center; min-height:38px; text-decoration:none; }

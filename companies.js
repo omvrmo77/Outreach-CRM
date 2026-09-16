@@ -7,7 +7,7 @@ import { isManagerAccount } from './authState.js';
 
 export const companiesPage = () => {
   const p=getProject();
-  const rows=filterOwnedRows(getCompanies(p));
+  const rows=[...filterOwnedRows(getCompanies(p))].sort((a,b)=>new Date(b.addedAt||b.createdAt||0)-new Date(a.addedAt||a.createdAt||0));
   const initialQuery=sessionStorage.getItem('lfg-crm-company-search')||'';
   return `<main class="page">
     <div class="page-header"><div><div class="page-kicker">${p} / Companies</div><h1 class="page-title">Companies</h1></div>${isManagerAccount()?'':`<a class="button primary" href="#/add-company">${icon('plus')} Add company</a>`}</div>

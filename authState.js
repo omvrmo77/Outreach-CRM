@@ -3,6 +3,37 @@ import { authRequest, backendOperations } from './crmApi.js';
 const SESSION_KEY='lfg-crm-supabase-session-v1';
 const REFRESH_SKEW_MS=60_000;
 
+const PUBLIC_APP_URL='https://omvrmo77.github.io/Outreach-CRM/';
+const EMAIL_VERIFICATION_REDIRECT=`${PUBLIC_APP_URL}?verified=1`;
+
+export const getVerificationReturn=()=>{
+  try{
+    const params=new URLSearchParams(location.search);
+    const verified=params.get('verified')==='1';
+    const error=params.get('error')||'';
+    const description=params.get('error_description')||params.get('error_description'.replace('_',' '))||'';
+    return {verified,error,description};
+  }catch{return {verified:false,error:'',description:''};}
+};
+
+export const clearVerificationReturn=()=>{
+  try{
+    const url=new URL(location.href);
+    url.searchParams.delete('verified');
+    url.searchParams.delete('error');
+    url.searchParams.delete('error_code');
+    url.searchParams.delete('error_description');
+    url.hash='#/login';
+    history.replaceState(null,'',url.pathname+url.search+url.hash);
+  }catch{
+    try{history.replaceState(null,'',`${location.pathname}#/login`);}catch{}
+  }
+};
+
+export const getInviteToken=()=>{
+  try{return new URLSearchParams(location.search).get('invite_token')||'';}catch{return '';}
+};
+
 let session=null;
 let authenticated=false;
 let currentUser=null;
@@ -103,7 +134,7 @@ export const authenticate=async(email,password)=>{
 
 export const signUp=async(email,password,fullName='')=>{
   try{
-    const result=await authRequest('signup',{body:{email:String(email||'').trim(),password:String(password||''),data:{full_name:String(fullName||'').trim()}}});
+    const result=await authRequest(`signup?redirect_to=${encodeURIComponent(EMAIL_VERIFICATION_REDIRECT)}`,{body:{email:String(email||'').trim(),password:String(password||''),data:{full_name:String(fullName||'').trim()}}});
     if(result?.access_token){
       persistSession(result);
       const profile=await loadProfile();
@@ -122,6 +153,20 @@ export const claimFirstAdmin=async(bootstrapToken)=>{
     const profile=await backendOperations.claimFirstAdmin(token,String(bootstrapToken||'').trim());
     applyProfile(profile);
     return {ok:authenticated,profile};
+  }catch(error){return {ok:false,message:error.message};}
+};
+
+
+export const acceptInvitation=async(password)=>{
+  const token=getInviteToken();
+  if(!token) return {ok:false,message:'Invitation token is missing.'};
+  try{
+    const accepted=await backendOperations.acceptInvite({token,password:String(password||'')});
+    if(!accepted?.ok||!accepted?.email) return {ok:false,message:'Invitation could not be accepted.'};
+    const signedIn=await authenticate(accepted.email,password);
+    if(!signedIn.ok) return {ok:false,message:signedIn.message||'Account created, but sign-in failed.'};
+    try{history.replaceState(null,'',`${location.pathname}#/home`);}catch{}
+    return {ok:true,profile:signedIn.profile,email:accepted.email};
   }catch(error){return {ok:false,message:error.message};}
 };
 

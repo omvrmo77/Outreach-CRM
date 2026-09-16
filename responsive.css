@@ -118,3 +118,6 @@
   .account-performance-row { grid-template-columns:1fr 1fr; }
   .attention-row { grid-template-columns:1fr; }
 }
+
+@media (max-width: 980px){ .team-invite-form{grid-template-columns:1fr 1fr;} .team-invite-submit{grid-column:1/-1;} }
+@media (max-width: 620px){ .team-invite-form{grid-template-columns:1fr;} .team-invite-submit{grid-column:auto;} .team-invite-link-row{grid-template-columns:1fr;} }

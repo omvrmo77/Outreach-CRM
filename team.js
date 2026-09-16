@@ -6,7 +6,12 @@ import { icon } from './icons.js';
 import { esc } from './html.js';
 
 const backendRoleLabel=(role='team_member')=>({admin:'Admin',outreach_lead:'Outreach Lead',head_operations:'Head of Operations',team_member:'Outreach'}[role]||role);
-const approvalLabel=(profile={})=>profile.is_active===false?'Inactive':profile.approval_status==='approved'?'Approved':profile.approval_status==='rejected'?'Rejected':'Pending';
+const approvalLabel=(profile={})=>{
+  if(profile.is_active===false||profile.approval_status==='disabled') return 'Disabled';
+  if(profile.invited_at&&!profile.email_confirmed_at) return 'Invited';
+  if(profile.approval_status==='approved') return 'Approved';
+  return 'Pending';
+};
 
 export const teamPage=()=>{
   const project=getProject();
@@ -17,6 +22,18 @@ export const teamPage=()=>{
   return `<main class="page">
     <div class="page-header"><div><div class="page-kicker">${project} / Team</div><h1 class="page-title">Team performance</h1></div></div>
 
+    ${isAdmin?`<section class="card card-pad team-invite-card">
+      <div class="section-head"><div><div class="page-kicker">Admin access</div><h3 class="section-title">Invite team member</h3><p class="section-copy">Create a private one-time link, assign the role now, then send the link to the person you want to add.</p></div></div>
+      <form id="team-invite-form" class="team-invite-form">
+        <div class="field"><label for="team-invite-name">Full name</label><input id="team-invite-name" autocomplete="name" placeholder="Maureen Bacaltos" required></div>
+        <div class="field"><label for="team-invite-email">Email</label><input id="team-invite-email" type="email" autocomplete="email" placeholder="name@company.com" required></div>
+        <div class="field"><label for="team-invite-role">Role</label><select id="team-invite-role"><option value="team_member">Outreach</option><option value="outreach_lead">Outreach Lead</option><option value="head_operations">Head of Operations</option><option value="admin">Admin</option></select></div>
+        <div class="team-invite-submit"><button class="button primary" type="submit">${icon('plus')} Create invitation</button></div>
+      </form>
+      <div class="login-error" id="team-invite-error" role="alert" aria-live="polite"></div>
+      <div id="team-invite-result" class="team-invite-result hidden"></div>
+    </section>`:''}
+
     <section class="team-role-grid">
       ${profiles.length?profiles.map(profile=>{
         const name=profile.full_name||profile.username||'LFG user';
@@ -24,7 +41,7 @@ export const teamPage=()=>{
         const status=approvalLabel(profile);
         return `<div class="card card-pad team-role-card" data-team-user-card="${esc(profile.id)}">
           <div class="avatar">${esc(initials||'LF')}</div>
-          <div><span class="manager-label">${esc(backendRoleLabel(profile.role))} · ${esc(status)}</span><h3>${esc(name)}</h3><p>${esc(profile.job_title||profile.username||'LFG workspace member')}</p></div>
+          <div><span class="manager-label">${esc(backendRoleLabel(profile.role))} · ${esc(status)}</span><h3>${esc(name)}</h3><p>${esc(profile.email||profile.job_title||profile.username||'LFG workspace member')}</p></div>
           ${isAdmin&&profile.id!==current?.id?`<div class="role-permission-list">
             <select class="manager-select" data-team-role="${esc(profile.id)}">
               <option value="team_member" ${profile.role==='team_member'?'selected':''}>Outreach</option>
@@ -33,7 +50,7 @@ export const teamPage=()=>{
               <option value="admin" ${profile.role==='admin'?'selected':''}>Admin</option>
             </select>
             <button class="mini-action" data-team-access="approve" data-team-user="${esc(profile.id)}">${profile.approval_status==='approved'&&profile.is_active!==false?'Save role':'Approve'}</button>
-            <button class="mini-action" data-team-access="reject" data-team-user="${esc(profile.id)}">Reject</button>
+            <button class="mini-action" data-team-access="reject" data-team-user="${esc(profile.id)}">Disable</button>
             <button class="mini-action" data-team-access="${profile.is_active===false?'reactivate':'deactivate'}" data-team-user="${esc(profile.id)}">${profile.is_active===false?'Reactivate':'Deactivate'}</button>
           </div>`:`<div class="role-permission-list"><span>${esc(status)}</span><span>${esc(backendRoleLabel(profile.role))}</span></div>`}
         </div>`;

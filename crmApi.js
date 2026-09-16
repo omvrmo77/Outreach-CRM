@@ -28,6 +28,21 @@ export const crmRpc=async(name,args={},token='')=>{
   return parseResponse(response);
 };
 
+
+export const edgeFunctionRequest=async(name,{body={},token=''}={})=>{
+  if(!backendConfig.enabled) throw new Error('Backend is disabled.');
+  const response=await fetch(`${backendConfig.url}/functions/v1/${name}`,{
+    method:'POST',
+    headers:{
+      apikey:backendConfig.publishableKey,
+      ...(token?{Authorization:`Bearer ${token}`}:{ }),
+      'Content-Type':'application/json'
+    },
+    body:JSON.stringify(body||{})
+  });
+  return parseResponse(response);
+};
+
 export const authRequest=async(path,{method='POST',body=null,token=''}={})=>{
   if(!backendConfig.enabled) throw new Error('Backend is disabled.');
   const response=await fetch(`${backendConfig.url}/auth/v1/${path}`,{
@@ -44,6 +59,8 @@ export const backendOperations={
   claimFirstAdmin:(token,bootstrapToken)=>crmRpc('crm_frontend_claim_first_admin',{p_token:bootstrapToken},token),
   team:(token)=>crmRpc('crm_frontend_list_team',{},token),
   setProfileAccess:(token,{userId,role,approvalStatus,isActive=true})=>crmRpc('crm_frontend_set_profile_access',{p_user_id:userId,p_role:role,p_approval_status:approvalStatus,p_is_active:isActive},token),
+  inviteMember:(token,{email,fullName,role})=>edgeFunctionRequest('invite-crm-member',{token,body:{email,fullName,role}}),
+  acceptInvite:({token,password})=>edgeFunctionRequest('accept-crm-invite',{body:{token,password}}),
   state:(token,{productCode})=>crmRpc('crm_frontend_state_fast_v2',{p_product_code:productCode},token),
   companyBundle:(token,{productCode,companyId})=>crmRpc('crm_frontend_company_bundle',{p_product_code:productCode,p_company_id:companyId},token),
   connectionsByIds:(token,{productCode,ids})=>crmRpc('crm_frontend_connections_by_ids',{p_product_code:productCode,p_ids:ids},token),
