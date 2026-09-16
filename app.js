@@ -14,7 +14,7 @@ import {
 import { esc } from './html.js';
 import { renderAnalyticsDayPanel } from './activityAnalytics.js';
 import { activityActions } from './activityActions.js';
-import { combine12hTime, toDateInputValue, getWorkspaceTimeValue, getWorkspaceDateKey, formatDate, formatDateTime, timeParts12h, workspaceDateTimeToDate, addWorkspaceDays, validateWorkspaceDateTime } from './date.js';
+import { combine12hTime, toLocalDateInputValue, getDeviceTimeValue, getDeviceDateKey, getWorkspaceDateKey, formatDate, formatDateTime, timeParts12h, localDateTimeToDate, addWorkspaceDays, validateLocalDateTime } from './date.js';
 import { safeDecodeRouteComponent } from './route.js';
 import { parseBatchCandidates, batchCheckSummary } from './batchCheck.js';
 import { isBackendEnabled, syncBackendState, backendAddConnection, backendAddConnectionsBulk, backendAddCompany, backendRecordCompanyAction, backendUpdateActivity, backendDeleteActivity, backendUndoLastAction, backendArchiveCompany, backendSetProfileAccess, backendCheckBatch, backendLoadHistoricalConnections } from './backendSync.js';
@@ -32,9 +32,9 @@ const showToast = (id, text) => {
   setTimeout(()=>toast.classList.remove('show'),1600);
 };
 
-const resolveWorkspaceFormInstant = (dateElement, timeValue) => {
+const resolveLocalFormInstant = (dateElement, timeValue) => {
   if(dateElement?.setCustomValidity) dateElement.setCustomValidity('');
-  const validation=validateWorkspaceDateTime(dateElement?.value||'',timeValue||'');
+  const validation=validateLocalDateTime(dateElement?.value||'',timeValue||'');
   if(validation.valid) return validation.iso;
   if(dateElement?.setCustomValidity){
     dateElement.setCustomValidity(validation.message);
@@ -97,15 +97,32 @@ const render = () => {
   bind();
 };
 
+const BLOCK_FIELD_NAMES = [
+  'Company','Contact Name','Contact','Title','Personality','Project Summary','Why Interesting','Potential LFG Angle','Funding Status','Lead Type','Agenda','Outreach Message','Message','First Message','Status','Notes',
+  'Website','Target Category','Priority','Recommended Timing','Best Platform','Primary Route','Fallback Route','Why This Contact','01 Angle','O1 Angle','Desired Outcome','Next Step','Telegram Username','TG Username','Group Chat','LinkedIn Account Used'
+];
+const BLOCK_FIELD_LOOKUP = new Map(BLOCK_FIELD_NAMES.map(name=>[name.toLowerCase(),name]));
+const MULTILINE_BLOCK_FIELDS = new Set(['Outreach Message','Message','First Message','Notes']);
+
 const parseBlock = (text) => {
   const out = {};
   let key = '';
-  text.split(/\r?\n/).forEach(raw => {
-    const line = raw.trim(); if(!line) return;
-    const m = line.match(/^([^:]+):\s*(.*)$/);
-    if(m){ key=m[1].trim(); out[key]=m[2].trim(); }
-    else if(key) out[key] = `${out[key]} ${line}`.trim();
+  String(text||'').split(/\r?\n/).forEach(raw => {
+    const match=raw.match(/^([^:\r\n]+):[ \t]*(.*)$/);
+    const candidate=match?BLOCK_FIELD_LOOKUP.get(match[1].trim().toLowerCase()):null;
+    if(candidate){
+      key=candidate;
+      out[key]=match[2]||'';
+      return;
+    }
+    if(!key) return;
+    if(MULTILINE_BLOCK_FIELDS.has(key)){
+      out[key]=`${out[key]||''}\n${raw}`.replace(/^\n/,'');
+    } else if(raw.trim()) {
+      out[key]=`${out[key]||''} ${raw.trim()}`.trim();
+    }
   });
+  Object.keys(out).forEach(k=>{ out[k]=MULTILINE_BLOCK_FIELDS.has(k)?String(out[k]).trim():String(out[k]).trim(); });
   return out;
 };
 
@@ -157,7 +174,7 @@ const bindConnections = () => {
     const messageBody=document.getElementById('connection-message')?.value.trim()||'';
     const selectedAccount=getAccount(selected);
     const connectionTime=combine12hTime(document.getElementById('connection-hour')?.value,document.getElementById('connection-minute')?.value,document.getElementById('connection-period')?.value);
-    const sentAt=resolveWorkspaceFormInstant(document.getElementById('connection-date'),connectionTime);
+    const sentAt=resolveLocalFormInstant(document.getElementById('connection-date'),connectionTime);
     if(!name||!company||!selected||!sentAt) return;
     if(!validateOccurredFormInstant(document.getElementById('connection-date'),sentAt,'This connection request is in the future. Outreach activity must use a time that has already occurred.')) return;
     if(selectedAccount.platform==='X' && !messageBody) return;
@@ -185,7 +202,7 @@ const bindConnections = () => {
       return {name:(parts[0]||'').trim(),company:(parts.slice(1).join(' | ')||'').trim()};
     }).filter(x=>x.name&&x.company);
     const connectionTime=combine12hTime(document.getElementById('connection-hour')?.value,document.getElementById('connection-minute')?.value,document.getElementById('connection-period')?.value);
-    const sentAt=resolveWorkspaceFormInstant(document.getElementById('connection-date'),connectionTime);
+    const sentAt=resolveLocalFormInstant(document.getElementById('connection-date'),connectionTime);
     if(!sentAt) return;
     if(!validateOccurredFormInstant(document.getElementById('connection-date'),sentAt,'These connection requests are in the future. Outreach activity must use a time that has already occurred.')) return;
     let result;
@@ -387,7 +404,7 @@ const bindAddCompany = () => {
     if(!completingX && !messageBody){ showToast('company-toast','Paste the first message before saving'); document.getElementById('initial-message-body')?.focus(); return; }
     const accountId=document.getElementById('company-account')?.value||getSelectedAccount(project);
     const messageTime=combine12hTime(document.getElementById('initial-message-hour')?.value,document.getElementById('initial-message-minute')?.value,document.getElementById('initial-message-period')?.value);
-    const messageSentAt=resolveWorkspaceFormInstant(document.getElementById('initial-message-date'),messageTime);
+    const messageSentAt=resolveLocalFormInstant(document.getElementById('initial-message-date'),messageTime);
     if(!messageSentAt){ showToast('company-toast','Choose when the message was sent'); return; }
     if(!completingX&&!validateOccurredFormInstant(document.getElementById('initial-message-date'),messageSentAt)) return;
     if(!completingX&&match&&getAccount(match.accountId).platform==='LinkedIn'&&new Date(messageSentAt)<new Date(match.sentAt)){
@@ -428,8 +445,8 @@ const bindCompanyProfile = () => {
   const contacts=company?getCompanyContacts(company):[];
   const setPickerTime=(prefix,value)=>{
     const d=new Date(value||Date.now()); if(Number.isNaN(d.getTime())) return;
-    const parts=timeParts12h(getWorkspaceTimeValue(d));
-    const date=document.getElementById(`${prefix}-date`); if(date) date.value=toDateInputValue(d);
+    const parts=timeParts12h(getDeviceTimeValue(d));
+    const date=document.getElementById(`${prefix}-date`); if(date) date.value=toLocalDateInputValue(d);
     const hour=document.getElementById(`${prefix}-hour`); if(hour) hour.value=parts.hour;
     const minute=document.getElementById(`${prefix}-minute`); if(minute) minute.value=parts.minute;
     const period=document.getElementById(`${prefix}-period`); if(period) period.value=parts.period;
@@ -506,7 +523,7 @@ const bindCompanyProfile = () => {
     if(config.needsMeetingTime){
       meetingFields?.classList.remove('hidden');
       if(meetingLabel) meetingLabel.textContent=config.meetingLabel||'Meeting date & time';
-      setPickerTime('activity-meeting',existing?.scheduledFor||workspaceDateTimeToDate(addWorkspaceDays(getWorkspaceDateKey(),1),'10:00'));
+      setPickerTime('activity-meeting',existing?.scheduledFor||localDateTimeToDate(addWorkspaceDays(getDeviceDateKey(),1),'10:00'));
     } else meetingFields?.classList.add('hidden');
     refreshOperationalTargets(type,existing);
     setPickerTime('activity',existing?.at||new Date());
@@ -532,7 +549,7 @@ const bindCompanyProfile = () => {
     const config=activityActions[type]; if(!config) return;
     const activityDate=document.getElementById('activity-date')?.value;
     const activityTime=combine12hTime(document.getElementById('activity-hour')?.value,document.getElementById('activity-minute')?.value,document.getElementById('activity-period')?.value);
-    const at=resolveWorkspaceFormInstant(document.getElementById('activity-date'),activityTime);
+    const at=resolveLocalFormInstant(document.getElementById('activity-date'),activityTime);
     const detail=document.getElementById('activity-detail')?.value.trim()||'';
     const secondaryDetail=document.getElementById('activity-secondary')?.value.trim()||'';
     if(!at) return;
@@ -542,7 +559,7 @@ const bindCompanyProfile = () => {
     if(config.needsMeetingTime){
       const meetingDate=document.getElementById('activity-meeting-date')?.value;
       const meetingTime=combine12hTime(document.getElementById('activity-meeting-hour')?.value,document.getElementById('activity-meeting-minute')?.value,document.getElementById('activity-meeting-period')?.value);
-      scheduledFor=resolveWorkspaceFormInstant(document.getElementById('activity-meeting-date'),meetingTime); if(!scheduledFor) return;
+      scheduledFor=resolveLocalFormInstant(document.getElementById('activity-meeting-date'),meetingTime); if(!scheduledFor) return;
     }
     const contactId=document.getElementById('activity-contact')?.value||company?.primaryContactId||'';
     const accountId=document.getElementById('activity-account')?.value||'';

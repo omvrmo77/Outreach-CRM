@@ -1,7 +1,7 @@
 import { getProject } from './projectState.js';
 import { accounts, getSelectedAccount, getConnections, getAccount, getCompanies, getHistoricalConnectionPaging } from './crmState.js';
 import { icon } from './icons.js';
-import { formatDateTime, toDateInputValue, getWorkspaceTimeValue, timeParts12h, hourOptions12h, minuteOptions, periodOptions } from './date.js';
+import { formatDateTime, formatDeviceDateTime, toLocalDateInputValue, getDeviceTimeValue, getDeviceTimeZone, timeParts12h, hourOptions12h, minuteOptions, periodOptions } from './date.js';
 import { esc } from './html.js';
 import { filterOwnedRows } from './access.js';
 import { isManagerAccount } from './authState.js';
@@ -26,7 +26,7 @@ export const connectionsPage = () => {
   const selected=getSelectedAccount(p);
   const selectedAccount=getAccount(selected);
   const now=new Date();
-  const nowParts=timeParts12h(getWorkspaceTimeValue(now));
+  const nowParts=timeParts12h(getDeviceTimeValue(now));
   const rows=readOnly?getConnections(p):filterOwnedRows(getConnections(p));
   const knownContacts=getCompanies(p).flatMap(company=>(company.contacts||[]).map(contact=>({company,contact})))
     .sort((a,b)=>a.company.company.localeCompare(b.company.company)||a.contact.name.localeCompare(b.contact.name)||String(a.contact.role||'').localeCompare(String(b.contact.role||'')));
@@ -42,9 +42,9 @@ export const connectionsPage = () => {
       <div class="section-head"><div><h3 class="section-title">Choose account once</h3><div class="section-meta">Everything you add below uses this account until you switch it.</div></div></div>
       <div class="account-choices">${accounts.map(a=>accountCard(a,selected)).join('')}</div>
       <div class="connection-actual-time">
-        <div class="field"><label>${selectedAccount.platform==='LinkedIn'?'Connections sent date':'Message sent date'}</label><input id="connection-date" type="date" value="${toDateInputValue(now)}"></div>
+        <div class="field"><label>${selectedAccount.platform==='LinkedIn'?'Connections sent date':'Message sent date'}</label><input id="connection-date" type="date" value="${toLocalDateInputValue(now)}"></div>
         <div class="field"><label>${selectedAccount.platform==='LinkedIn'?'Connections sent time':'Message sent time'}</label><div class="time-part-picker"><select id="connection-hour">${hourOptions12h(nowParts.hour)}</select><span class="time-colon">:</span><select id="connection-minute">${minuteOptions(nowParts.minute)}</select><select id="connection-period">${periodOptions(nowParts.period)}</select></div></div>
-        <small>Set this once for the batch. The CRM separately records when you entered it.</small>
+        <small>Enter the time shown on this device (${getDeviceTimeZone()}). The CRM converts it automatically for Chicago-based reporting.</small>
       </div>
       <div class="field connection-known-contact-field">
         <label>Existing CRM contact <span class="cell-muted">(recommended when already saved)</span></label>
@@ -80,10 +80,10 @@ export const connectionsPage = () => {
       <div class="mini-stat card"><span>Messaged</span><strong>${messaged}</strong><small>Accepted is inferred when the first LinkedIn message is recorded</small></div>
     </section>
 
-    <div class="section-head connections-table-head"><div><h3 class="section-title">Connection list</h3><div class="section-meta">When a matching LinkedIn message is recorded, a pending connection is automatically counted as accepted.</div></div><div class="connection-tabs"><button class="connection-tab active" data-connection-filter="ALL">All</button><button class="connection-tab" data-connection-filter="Pending">Pending</button><button class="connection-tab" data-connection-filter="Message Sent">Messaged</button></div></div>
+    <div class="section-head connections-table-head"><div><h3 class="section-title">Connection list</h3><div class="section-meta">When a matching LinkedIn message is recorded, a pending connection is automatically counted as accepted. Times below use this device (${getDeviceTimeZone()}); reports are grouped by Chicago business time.</div></div><div class="connection-tabs"><button class="connection-tab active" data-connection-filter="ALL">All</button><button class="connection-tab" data-connection-filter="Pending">Pending</button><button class="connection-tab" data-connection-filter="Message Sent">Messaged</button></div></div>
 
     <div class="table-wrap data-list-frame"><table><thead><tr><th>Person</th><th>Company</th><th>Account</th><th>Owner</th><th>Sent / Added</th><th>Accepted</th><th>Status</th><th></th></tr></thead><tbody id="connections-body">
-      ${rows.length ? rows.map(r=>{const a=r.historicalOnly?null:getAccount(r.accountId);return `<tr data-connection-row data-status="${esc(r.status)}"><td class="cell-company"><strong>${esc(r.name)}</strong>${r.contactRole?`<small class="cell-muted">${esc(r.contactRole)}</small>`:''}</td><td>${esc(r.company)}</td><td>${r.historicalOnly?'<span class="cell-muted">—</span>':`<span class="account-badge">${esc(a.label)}</span>`}</td><td>${r.historicalOnly?'<span class="cell-muted">—</span>':esc(r.owner)}</td><td class="cell-muted">${r.historicalOnly?'Date not in source':formatDateTime(r.sentAt)}</td><td class="cell-muted">${r.historicalOnly?'—':(r.acceptedAt?formatDateTime(r.acceptedAt):'—')}</td><td><span class="status ${r.status==='Accepted'?'replied':r.status==='Message Sent'?'sent':''}">${esc(r.status)}</span></td><td class="table-action-cell">${rowActions(r,readOnly)}</td></tr>`;}).join('') : '<tr><td colspan="8" class="cell-muted">No connections yet.</td></tr>'}
+      ${rows.length ? rows.map(r=>{const a=r.historicalOnly?null:getAccount(r.accountId);return `<tr data-connection-row data-status="${esc(r.status)}"><td class="cell-company"><strong>${esc(r.name)}</strong>${r.contactRole?`<small class="cell-muted">${esc(r.contactRole)}</small>`:''}</td><td>${esc(r.company)}</td><td>${r.historicalOnly?'<span class="cell-muted">—</span>':`<span class="account-badge">${esc(a.label)}</span>`}</td><td>${r.historicalOnly?'<span class="cell-muted">—</span>':esc(r.owner)}</td><td class="cell-muted">${r.historicalOnly?'Date not in source':formatDeviceDateTime(r.sentAt)}</td><td class="cell-muted">${r.historicalOnly?'—':(r.acceptedAt?formatDeviceDateTime(r.acceptedAt):'—')}</td><td><span class="status ${r.status==='Accepted'?'replied':r.status==='Message Sent'?'sent':''}">${esc(r.status)}</span></td><td class="table-action-cell">${rowActions(r,readOnly)}</td></tr>`;}).join('') : '<tr><td colspan="8" class="cell-muted">No connections yet.</td></tr>'}
     </tbody></table></div>
     ${historicalPaging.total?`<div class="historical-connection-loader"><span class="section-meta">Historical archive: ${historicalPaging.loaded.toLocaleString()} / ${historicalPaging.total.toLocaleString()} loaded</span>${historicalPaging.loaded<historicalPaging.total?`<button class="button" id="load-more-historical-connections" type="button">Load 50 more historical rows</button>`:''}</div>`:''}
     <div id="connection-toast" class="toast">Saved</div>

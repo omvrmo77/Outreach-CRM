@@ -1,14 +1,14 @@
 import { getProject } from './projectState.js';
 import { icon } from './icons.js';
 import { getAccounts, getSelectedAccount } from './crmState.js';
-import { toDateInputValue, getWorkspaceTimeValue, timeParts12h, hourOptions12h, minuteOptions, periodOptions } from './date.js';
+import { toLocalDateInputValue, getDeviceTimeValue, getDeviceTimeZone, timeParts12h, hourOptions12h, minuteOptions, periodOptions } from './date.js';
 
 export const addCompanyPage = () => {
   const p = getProject();
   const selectedAccount=getSelectedAccount(p);
   const accountOptions=getAccounts().map(a=>`<option value="${a.id}" ${a.id===selectedAccount?'selected':''}>${a.label}</option>`).join('');
   const now=new Date();
-  const nowParts=timeParts12h(getWorkspaceTimeValue(now));
+  const nowParts=timeParts12h(getDeviceTimeValue(now));
   return `<main class="page">
     <div class="page-header">
       <div><div class="page-kicker">${p} / Add company</div><h1 class="page-title">Add company</h1></div>
@@ -32,9 +32,10 @@ export const addCompanyPage = () => {
         <div class="initial-message-panel hidden" id="initial-message-panel">
           <div class="required-message-head"><strong>First message sent</strong><small>A company is saved only together with the first outreach message you actually sent.</small></div>
           <div class="message-actual-time">
-            <div class="field"><label>Message sent date</label><input id="initial-message-date" type="date" value="${toDateInputValue(now)}"></div>
+            <div class="field"><label>Message sent date</label><input id="initial-message-date" type="date" value="${toLocalDateInputValue(now)}"></div>
             <div class="field"><label>Message sent time</label><div class="time-part-picker"><select id="initial-message-hour">${hourOptions12h(nowParts.hour)}</select><span class="time-colon">:</span><select id="initial-message-minute">${minuteOptions(nowParts.minute)}</select><select id="initial-message-period">${periodOptions(nowParts.period)}</select></div></div>
           </div>
+          <div class="local-time-help">Your device time: <strong>${getDeviceTimeZone()}</strong>. The CRM converts this automatically for Chicago-based reporting.</div>
           <div class="field"><label>Message sent</label><textarea id="initial-message-body" placeholder="Paste the exact message that was sent." required></textarea><small class="field-help">Required. This becomes the first message in the relationship timeline.</small></div>
         </div>
 

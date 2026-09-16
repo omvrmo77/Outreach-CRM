@@ -561,3 +561,63 @@ a.profile-access-card:hover { border-color:rgba(255,255,255,.2); }
 
 /* Performance pass: historical connection archive is loaded in small pages instead of blocking CRM startup. */
 .historical-connection-loader{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 4px 2px;flex-wrap:wrap}
+
+/* Device-local entry + expandable timeline messages */
+.local-time-help {
+  margin: -2px 0 12px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+}
+.local-time-help strong { color: var(--text-soft); font-weight: 600; }
+.timeline-expandable { padding: 0; overflow: hidden; }
+.timeline-expandable > summary {
+  list-style: none;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+}
+.timeline-expandable > summary::-webkit-details-marker { display: none; }
+.timeline-expandable > summary span {
+  margin: 0;
+  white-space: nowrap;
+}
+.timeline-expandable > summary strong {
+  color: var(--text-soft);
+  font-size: 10px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.timeline-expandable > summary em {
+  color: var(--muted);
+  font-size: 8px;
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  white-space: nowrap;
+}
+.timeline-expandable[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+.timeline-expandable[open] > summary em { font-size:0; }
+.timeline-expandable[open] > summary em::after { content:'Hide'; font-size:8px; }
+.timeline-expandable > p {
+  padding: 12px;
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+@media (max-width: 640px) {
+  .timeline-expandable > summary { grid-template-columns: 1fr auto; }
+  .timeline-expandable > summary span { grid-column: 1 / -1; }
+}
+.timeline-event-controls time { display:flex; flex-direction:column; align-items:flex-end; gap:2px; }
+.timeline-event-controls time small,
+.scheduled-event small,
+.summary-stat small { display:block; color:var(--muted); font-size:8px; line-height:1.35; font-weight:400; }
+.scheduled-event small { margin-top:3px; }

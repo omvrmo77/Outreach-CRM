@@ -1,7 +1,7 @@
 import { getProject } from './projectState.js';
 import { getCompany, getActivities, getAccount, getAccounts, getChangeHistory, getCompanyContacts } from './crmState.js';
 import { icon } from './icons.js';
-import { formatDateTime, toDateInputValue, getWorkspaceTimeValue, getWorkspaceDateKey, addWorkspaceDays, timeParts12h, hourOptions12h, minuteOptions, periodOptions } from './date.js';
+import { formatDateTime, formatDeviceDateTime, getDeviceTimeValue, getDeviceDateKey, getDeviceTimeZone, addWorkspaceDays, timeParts12h, hourOptions12h, minuteOptions, periodOptions } from './date.js';
 import { esc } from './html.js';
 import { getCurrentUser, isOutreachAccount, isManagerAccount } from './authState.js';
 
@@ -12,12 +12,22 @@ const eventIcon = (type) => ({
 
 const editableTypes = new Set(['note_added','message_sent','followup_sent','followup_scheduled','replied','meeting_booked','meeting_scheduled','meeting_rescheduled','meeting_done']);
 const actionButton = (type,label,primary=false) => `<button class="company-action ${primary?'primary-action':''}" data-company-action="${type}">${icon(eventIcon(type))}<span>${label}</span></button>`;
-const nowTimeValue = () => getWorkspaceTimeValue(new Date());
+const nowTimeValue = () => getDeviceTimeValue(new Date());
+
+const expandableDetail = (label,text,{secondary=false}={}) => {
+  const value=String(text||'');
+  const preview=value.replace(/\s+/g,' ').trim();
+  const shortPreview=preview.length>150?`${preview.slice(0,147)}…`:preview;
+  return `<details class="timeline-detail timeline-expandable ${secondary?'secondary':''}"><summary><span>${esc(label||'Details')}</span><strong>${esc(shortPreview||'Open full text')}</strong><em>View full</em></summary><p>${esc(value)}</p></details>`;
+};
 
 const detailBlock = (a) => {
   const blocks=[];
-  if(a.detail) blocks.push(`<div class="timeline-detail"><span>${esc(a.detailLabel||'Details')}</span><p>${esc(a.detail)}</p></div>`);
-  if(a.secondaryDetail) blocks.push(`<div class="timeline-detail secondary"><span>${esc(a.secondaryLabel||'Response / next move')}</span><p>${esc(a.secondaryDetail)}</p></div>`);
+  const shouldExpand=['message_sent','followup_sent','replied'].includes(a.type);
+  if(a.detail){
+    blocks.push(shouldExpand?expandableDetail(a.detailLabel||'Details',a.detail):`<div class="timeline-detail"><span>${esc(a.detailLabel||'Details')}</span><p>${esc(a.detail)}</p></div>`);
+  }
+  if(a.secondaryDetail) blocks.push(expandableDetail(a.secondaryLabel||'Response / next move',a.secondaryDetail,{secondary:true}));
   if(a.note && !a.detail) blocks.push(`<div class="timeline-detail"><span>Note</span><p>${esc(a.note)}</p></div>`);
   return blocks.join('');
 };
@@ -37,7 +47,7 @@ export const companyProfilePage = (name,{invalidRoute=false}={}) => {
   const contacts=getCompanyContacts(row);
   const primary=contacts.find(c=>c.id===row.primaryContactId)||contacts[0]||null;
   const account=getAccount(primary?.accountId||row.accountId);
-  const today=getWorkspaceDateKey();
+  const today=getDeviceDateKey();
   const activityTime=timeParts12h(nowTimeValue());
   const meetingTime=timeParts12h('10:00');
   const managerView=isManagerAccount();
@@ -59,8 +69,8 @@ export const companyProfilePage = (name,{invalidRoute=false}={}) => {
 
     <section class="relationship-summary grid grid-5">
       <div class="summary-stat card"><span>Current status</span><strong>${esc(row.status||'—')}</strong></div>
-      <div class="summary-stat card"><span>First activity</span><strong>${first?formatDateTime(first.at):'Date unavailable'}</strong></div>
-      <div class="summary-stat card"><span>Last activity</span><strong>${last?formatDateTime(last.at):'Date unavailable'}</strong></div>
+      <div class="summary-stat card"><span>First activity</span><strong>${first?formatDeviceDateTime(first.at):'Date unavailable'}</strong><small>${first?`Local · Chicago ${formatDateTime(first.at)}`:''}</small></div>
+      <div class="summary-stat card"><span>Last activity</span><strong>${last?formatDeviceDateTime(last.at):'Date unavailable'}</strong><small>${last?`Local · Chicago ${formatDateTime(last.at)}`:''}</small></div>
       <div class="summary-stat card"><span>Owner</span><strong>${esc(row.owner)}</strong></div>
       <div class="summary-stat card"><span>Contacts involved</span><strong>${contacts.length}</strong></div>
     </section>
@@ -70,7 +80,7 @@ export const companyProfilePage = (name,{invalidRoute=false}={}) => {
         <div class="card card-pad">
           <div class="section-head"><div><h3 class="section-title">Relationship timeline</h3></div></div>
           <div class="relationship-timeline">
-            ${chronological.length ? chronological.map((a,i)=>{const acc=getAccount(a.accountId);return `<div class="timeline-event" data-activity-id="${esc(a.id)}"><div class="timeline-rail"><div class="timeline-node">${icon(eventIcon(a.type))}</div>${i<chronological.length-1?'<div class="timeline-line"></div>':''}</div><div class="timeline-content"><div class="timeline-top"><strong>${esc(a.label)}</strong><div class="timeline-event-controls"><time>${formatDateTime(a.at)}</time>${canMutate&&editableTypes.has(a.type)?`<button class="timeline-edit" data-edit-activity="${esc(a.id)}" title="Edit activity">Edit</button>`:''}${canMutate&&a.type!=='company_added'&&a.type!=='contact_added'?`<button class="timeline-delete" data-delete-activity="${esc(a.id)}" title="Delete activity">Delete</button>`:''}</div></div><div class="timeline-meta">Owner: ${esc(a.owner)} · ${esc(acc.label)}${a.contact?` · ${esc(a.contact)}`:''}${a.actor&&a.actor!==a.owner?` · Recorded by ${esc(a.actor)}`:''}</div>${a.previousScheduledFor?`<div class="scheduled-event previous">Previous meeting time: <strong>${formatDateTime(a.previousScheduledFor)}</strong></div>`:''}${a.scheduledFor?`<div class="scheduled-event">${a.type==='followup_scheduled'?'Follow-up':'Meeting'}: <strong>${formatDateTime(a.scheduledFor)}</strong></div>`:''}${detailBlock(a)}</div></div>`;}).join('') : '<div class="empty-mini">No activity has been recorded yet.</div>'}
+            ${chronological.length ? chronological.map((a,i)=>{const acc=getAccount(a.accountId);return `<div class="timeline-event" data-activity-id="${esc(a.id)}"><div class="timeline-rail"><div class="timeline-node">${icon(eventIcon(a.type))}</div>${i<chronological.length-1?'<div class="timeline-line"></div>':''}</div><div class="timeline-content"><div class="timeline-top"><strong>${esc(a.label)}</strong><div class="timeline-event-controls"><time>${formatDeviceDateTime(a.at)}<small>Local · Chicago ${formatDateTime(a.at)}</small></time>${canMutate&&editableTypes.has(a.type)?`<button class="timeline-edit" data-edit-activity="${esc(a.id)}" title="Edit activity">Edit</button>`:''}${canMutate&&a.type!=='company_added'&&a.type!=='contact_added'?`<button class="timeline-delete" data-delete-activity="${esc(a.id)}" title="Delete activity">Delete</button>`:''}</div></div><div class="timeline-meta">Owner: ${esc(a.owner)} · ${esc(acc.label)}${a.contact?` · ${esc(a.contact)}`:''}${a.actor&&a.actor!==a.owner?` · Recorded by ${esc(a.actor)}`:''}</div>${a.previousScheduledFor?`<div class="scheduled-event previous">Previous meeting time: <strong>${formatDeviceDateTime(a.previousScheduledFor)}</strong><small>Local · Chicago ${formatDateTime(a.previousScheduledFor)}</small></div>`:''}${a.scheduledFor?`<div class="scheduled-event">${a.type==='followup_scheduled'?'Follow-up':'Meeting'}: <strong>${formatDeviceDateTime(a.scheduledFor)}</strong><small>Local · Chicago ${formatDateTime(a.scheduledFor)}</small></div>`:''}${detailBlock(a)}</div></div>`;}).join('') : '<div class="empty-mini">No activity has been recorded yet.</div>'}
           </div>
         </div>
       </div>
@@ -117,6 +127,7 @@ export const companyProfilePage = (name,{invalidRoute=false}={}) => {
             <div class="field"><label>Activity date</label><input id="activity-date" type="date" value="${today}" required></div>
             <div class="field"><label>Activity time</label><div class="time-part-picker"><select id="activity-hour" aria-label="Activity hour">${hourOptions12h(activityTime.hour)}</select><span class="time-colon">:</span><select id="activity-minute" aria-label="Activity minute">${minuteOptions(activityTime.minute)}</select><select id="activity-period" aria-label="Activity AM or PM">${periodOptions(activityTime.period)}</select></div></div>
           </div>
+          <div class="local-time-help">Enter the time shown on this device: <strong>${getDeviceTimeZone()}</strong>. The CRM converts it automatically for Chicago-based reporting.</div>
           <div class="field" id="activity-detail-wrap"><label id="activity-detail-label">Details</label><textarea id="activity-detail" placeholder=""></textarea></div>
           <div class="field hidden" id="activity-secondary-wrap"><label id="activity-secondary-label">Response / next move</label><textarea id="activity-secondary" placeholder=""></textarea></div>
           <div id="activity-meeting-fields" class="hidden"><div class="field-label-row"><span id="activity-meeting-label">Meeting date & time</span></div><div class="meeting-date-grid"><div class="field"><label>Scheduled date</label><input id="activity-meeting-date" type="date" value="${addWorkspaceDays(today,1)}"></div><div class="field"><label>Scheduled time</label><div class="time-part-picker"><select id="activity-meeting-hour" aria-label="Meeting hour">${hourOptions12h(meetingTime.hour)}</select><span class="time-colon">:</span><select id="activity-meeting-minute" aria-label="Meeting minute">${minuteOptions(meetingTime.minute)}</select><select id="activity-meeting-period" aria-label="Meeting AM or PM">${periodOptions(meetingTime.period)}</select></div></div></div></div>

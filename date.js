@@ -4,6 +4,43 @@ const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const asDate = (value) => value instanceof Date ? new Date(value.getTime()) : (value ? new Date(value) : null);
 const pad = (value) => String(value).padStart(2, '0');
 
+export const getDeviceTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
+export const getDeviceDateKey = (value = new Date()) => {
+  const d=asDate(value);
+  if(!d || Number.isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+};
+
+export const getDeviceTimeValue = (value = new Date()) => {
+  const d=asDate(value);
+  if(!d || Number.isNaN(d.getTime())) return '';
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+export const validateLocalDateTime = (dateKey, time='00:00') => {
+  if (!DATE_KEY_RE.test(String(dateKey || '')) || !/^\d{1,2}:\d{2}(?::\d{2})?$/.test(String(time || ''))) {
+    return {valid:false,date:null,iso:null,message:'Choose a valid local date and time.'};
+  }
+  const [y,m,d]=String(dateKey).split('-').map(Number);
+  const [hh=0,mm=0,ss=0]=String(time).split(':').map(Number);
+  const local=new Date(y,m-1,d,hh,mm,ss,0);
+  const matches=local.getFullYear()===y && local.getMonth()===m-1 && local.getDate()===d && local.getHours()===hh && local.getMinutes()===mm && local.getSeconds()===ss;
+  if(!matches || Number.isNaN(local.getTime())){
+    return {valid:false,date:null,iso:null,message:`This local time does not exist in ${getDeviceTimeZone()} because of a daylight-saving time change. Choose another time.`};
+  }
+  return {valid:true,date:local,iso:local.toISOString(),message:''};
+};
+
+export const localDateTimeToDate = (dateKey,time='00:00') => {
+  const result=validateLocalDateTime(dateKey,time);
+  return result.valid ? new Date(result.date.getTime()) : null;
+};
+
+export const localDateTimeToIso = (dateKey,time='00:00') => validateLocalDateTime(dateKey,time).iso;
+
+export const toLocalDateInputValue = (value = new Date()) => getDeviceDateKey(value);
+
 const workspacePartsFormatter = new Intl.DateTimeFormat('en-US', {
   timeZone: WORKSPACE_TIMEZONE,
   year: 'numeric', month: '2-digit', day: '2-digit',
@@ -118,8 +155,6 @@ export const workspaceDateTimeToDate = (dateKey, time = '00:00') => {
 };
 
 export const workspaceDateTimeToIso = (date, time) => validateWorkspaceDateTime(date,time).iso;
-// Compatibility alias. In this CRM, date/time form fields represent Chicago workspace time, never device-local time.
-export const localDateTimeToIso = workspaceDateTimeToIso;
 
 export const getWorkspaceDayRange = (dateKey = getWorkspaceDateKey()) => {
   const start = workspaceDateTimeToDate(dateKey, '00:00:00');
@@ -164,6 +199,12 @@ export const formatDateTime = (value) => {
     timeZone: WORKSPACE_TIMEZONE,
     day: '2-digit', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
   }).format(d);
+};
+
+export const formatDeviceDateTime = (value) => {
+  const d=asDate(value);
+  if(!d || Number.isNaN(d.getTime())) return 'Date unavailable';
+  return new Intl.DateTimeFormat('en-US',{day:'2-digit',month:'short',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true}).format(d);
 };
 
 export const formatDate = (value) => {
