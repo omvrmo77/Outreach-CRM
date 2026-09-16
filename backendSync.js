@@ -177,5 +177,6 @@ export const backendArchiveCompany=async(project,companyId)=>{
 };
 
 export const backendTeam=async()=>backendOperations.team(await tokenOrThrow());
+export const backendInviteMember=async({email,fullName,role})=>backendOperations.inviteMember(await tokenOrThrow(),{email,fullName,role});
 export const backendSetProfileAccess=async(payload)=>backendOperations.setProfileAccess(await tokenOrThrow(),payload);
 export const backendCheckBatch=async(project,items)=>backendOperations.checkBatch(await tokenOrThrow(),{productCode:project,items});
