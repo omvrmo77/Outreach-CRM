@@ -16,7 +16,10 @@ import { activityAnalyticsPage } from './activityAnalytics.js';
 import { profilePage } from './profile.js';
 import { safeDecodeRouteComponent } from './route.js';
 
-export const getRoute = () => location.hash.replace(/^#\//,'') || 'login';
+export const getRoute = () => {
+  const raw=location.hash.replace(/^#\//,'').split('?')[0];
+  return raw || 'login';
+};
 export const renderRoute = (route) => {
   if(route==='login') return { standalone:true, html:loginPage() };
   if(route.startsWith('company/')) {

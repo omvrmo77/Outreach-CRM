@@ -30,8 +30,38 @@ export const clearVerificationReturn=()=>{
   }
 };
 
+const inviteParamFrom=(value='')=>{
+  try{
+    const params=new URLSearchParams(String(value||'').replace(/^\?/,''));
+    return params.get('invite_token')||params.get('invite')||'';
+  }catch{return '';}
+};
+
 export const getInviteToken=()=>{
-  try{return new URLSearchParams(location.search).get('invite_token')||'';}catch{return '';}
+  try{
+    const direct=inviteParamFrom(location.search);
+    if(direct) return direct;
+    const hash=String(location.hash||'');
+    const qIndex=hash.indexOf('?');
+    if(qIndex>=0){
+      const fromHash=inviteParamFrom(hash.slice(qIndex+1));
+      if(fromHash) return fromHash;
+    }
+    return '';
+  }catch{return '';}
+};
+
+export const normalizeInviteReturn=()=>{
+  const token=getInviteToken();
+  if(!token) return '';
+  try{
+    const url=new URL(location.href);
+    url.search='';
+    url.searchParams.set('invite_token',token);
+    url.hash='#/login';
+    history.replaceState(null,'',url.pathname+url.search+url.hash);
+  }catch{}
+  return token;
 };
 
 let session=null;

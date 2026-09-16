@@ -4,7 +4,7 @@ import { topbar } from './topbar.js';
 import { loader } from './loader.js';
 import { getProject, setProject } from './projectState.js';
 import { setOwner, setRange, setDay } from './managerState.js';
-import { authenticate, initializeAuth, claimFirstAdmin, acceptInvitation, clearVerificationReturn, isAuthenticated, signOut, getCurrentUser, canManage, isOutreachAccount, isManagerAccount } from './authState.js';
+import { authenticate, initializeAuth, claimFirstAdmin, acceptInvitation, clearVerificationReturn, getInviteToken, normalizeInviteReturn, isAuthenticated, signOut, getCurrentUser, canManage, isOutreachAccount, isManagerAccount } from './authState.js';
 import { currentOwner } from './access.js';
 import {
   addConnection, addConnectionsBulk, setSelectedAccount, updateConnectionStatus, findConnection, getAccount, getConnections, getSelectedAccount,
@@ -66,6 +66,11 @@ const render = () => {
   }
 
   let route = getRoute();
+  const inviteToken=getInviteToken();
+  if(inviteToken && !isAuthenticated()){
+    route='login';
+    if(location.hash!=='#/login') normalizeInviteReturn();
+  }
 
   if (!isAuthenticated() && route !== 'login') {
     route = 'login';
@@ -985,8 +990,9 @@ window.addEventListener('hashchange', render);
 render();
 
 const waitForFrontendReady = async () => {
-  // Do not block app launch on remote fonts or decorative images. They can finish loading after the CRM shell appears.
-  if(isBackendEnabled()){
+  // Invitation links render immediately and do not hydrate the full CRM until activation succeeds.
+  const inviteToken=normalizeInviteReturn();
+  if(!inviteToken && isBackendEnabled()){
     try{
       const restored=await initializeAuth();
       if(restored) await syncBackendState(getProject());
@@ -996,8 +1002,12 @@ const waitForFrontendReady = async () => {
     }
   }
   launching=false;
-  if(!location.hash || location.hash==='#/') history.replaceState(null,'',isAuthenticated()?'#/home':'#/login');
-  if(location.hash==='#/login'&&isAuthenticated()) history.replaceState(null,'','#/home');
+  if(inviteToken){
+    if(location.hash!=='#/login') normalizeInviteReturn();
+  }else{
+    if(!location.hash || location.hash==='#/') history.replaceState(null,'',isAuthenticated()?'#/home':'#/login');
+    if(location.hash==='#/login'&&isAuthenticated()) history.replaceState(null,'','#/home');
+  }
   render();
 };
 waitForFrontendReady();
