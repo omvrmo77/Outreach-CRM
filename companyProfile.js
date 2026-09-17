@@ -47,8 +47,9 @@ export const companyProfilePage = (name,{invalidRoute=false}={}) => {
   const contacts=getCompanyContacts(row);
   const primary=contacts.find(c=>c.id===row.primaryContactId)||contacts[0]||null;
   const account=getAccount(primary?.accountId||row.accountId);
-  const today=getDeviceDateKey();
-  const activityTime=timeParts12h(nowTimeValue());
+  const now=new Date();
+  const today=getDeviceDateKey(now);
+  const activityTime=timeParts12h(getDeviceTimeValue(now));
   const meetingTime=timeParts12h('10:00');
   const managerView=isManagerAccount();
   const changes=getChangeHistory(p,row.id).slice(0,8);

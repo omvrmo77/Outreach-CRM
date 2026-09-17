@@ -8,7 +8,7 @@ import { meetingsPage } from './meetings.js';
 import { reportsPage } from './reports.js';
 import { teamPage } from './team.js';
 import { settingsPage } from './settings.js';
-import { companyProfilePage } from './companyProfile.js';
+import { companyProfilePage } from './companyProfile.js?v=20260917-companyfix1';
 import { loginPage } from './login.js';
 import { masterListPage } from './masterList.js';
 import { addCompanyPage } from './addCompany.js';

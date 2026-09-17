@@ -1,4 +1,4 @@
-import { getRoute, renderRoute } from './router.js';
+import { getRoute, renderRoute } from './router.js?v=20260917-companyfix1';
 import { sidebar } from './sidebar.js';
 import { topbar } from './topbar.js';
 import { loader } from './loader.js';
