@@ -1,6 +1,6 @@
 import { getProject } from './projectState.js';
 import { getManagerFilters } from './managerState.js';
-import { getActiveOwners, getActivityAnalytics, getAccount, getActivityDetail } from './crmState.js?v=20260917-connanalytics1';
+import { getActiveOwners, getActivityAnalytics, getAccount, getActivityDetail } from './crmState.js?v=20260917-accountuuid1';
 import { icon } from './icons.js';
 import { formatDateTime, formatWorkspaceDateKey, formatWorkspaceWeekday } from './date.js';
 import { esc } from './html.js';

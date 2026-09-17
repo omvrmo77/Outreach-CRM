@@ -2,7 +2,7 @@ import { getProject } from './projectState.js';
 import { getManagerFilters } from './managerState.js';
 import { metricCard } from './metricCard.js';
 import { rangeLabels } from './uiConfig.js';
-import { getActiveOwners, getDashboardMetrics, getFilteredActivities, getAccount, getActivityDetail, getActivityAnalytics } from './crmState.js?v=20260917-connanalytics1';
+import { getActiveOwners, getDashboardMetrics, getFilteredActivities, getAccount, getActivityDetail, getActivityAnalytics } from './crmState.js?v=20260917-accountuuid1';
 import { getManagementOverview, getNeedsAttention, getAccountPerformance, getWeeklyReview, buildWeeklyReportText } from './managementInsights.js';
 import { formatDateTime, formatWorkspaceDateKey, formatWorkspaceWeekday } from './date.js';
 import { esc } from './html.js';

@@ -10,7 +10,7 @@ import {
   addConnection, addConnectionsBulk, setSelectedAccount, updateConnectionStatus, findConnection, getAccount, getConnections, getSelectedAccount,
   addCompany, getCompany, getActivities, recordCompanyAction, deleteLocalCompany, deleteActivity, updateActivity, undoLastAction, getActivityAnalytics, exportPrototypeSnapshot,
   getNoRepeatCompanies, canonicalizeIdentity, getCompanyContacts, getMeetingRecords, getFollowupRecords, getHistoricalConnectionPaging
-} from './crmState.js?v=20260917-connanalytics1';
+} from './crmState.js?v=20260917-accountuuid1';
 import { esc } from './html.js';
 import { renderAnalyticsDayPanel } from './activityAnalytics.js?v=20260917-connanalytics1';
 import { activityActions } from './activityActions.js';

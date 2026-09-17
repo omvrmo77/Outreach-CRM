@@ -29,9 +29,9 @@ const hasOccurred = (value, nowValue = currentInstant()) => {
 };
 
 export const accounts = [
-  { id: 'linkedin-saif', platform: 'LinkedIn', owner: 'Saif', label: 'Saif · LinkedIn' },
-  { id: 'linkedin-austin', platform: 'LinkedIn', owner: 'Austin', label: 'Austin · LinkedIn' },
-  { id: 'x-action', platform: 'X', owner: 'Action', label: 'Action · X' }
+  { id: '57fcb679-65ca-4c4d-a206-fa3428802e45', platform: 'LinkedIn', owner: 'Saif', label: 'Saif · LinkedIn' },
+  { id: '7496ea09-06fd-43ba-8ffb-2b8c6ce8137e', platform: 'LinkedIn', owner: 'Austin', label: 'Austin · LinkedIn' },
+  { id: '077de9dc-13fc-4c72-b661-203f924d7aed', platform: 'X', owner: 'Action', label: 'Action · X' }
 ];
 
 const backendMasterCompanies={LFG:null,O1:null};

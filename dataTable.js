@@ -1,4 +1,4 @@
-import { getAccount } from './crmState.js?v=20260917-toastconn1';
+import { getAccount } from './crmState.js?v=20260917-accountuuid1';
 import { esc } from './html.js';
 
 export const statusClass = (s='') => {

@@ -10,7 +10,7 @@ import {
   getRelationshipId,
   getCompany,
   getActivities
-} from './crmState.js?v=20260917-connanalytics1';
+} from './crmState.js?v=20260917-accountuuid1';
 
 export const isBackendEnabled=()=>Boolean(backendConfig.enabled);
 
