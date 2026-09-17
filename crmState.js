@@ -716,12 +716,12 @@ const pushActivity=(project,event)=>{
 
 const baseActivityRefs=(raw,contact)=>({companyId:raw?.id||'',company:raw?.company||'',contactId:contact?.id||'',contact:contact?.name||'',contactRole:contact?.role||''});
 
-export const addConnection = (project,{name,company,companyId='',contactId='',accountId,owner='Omar',messageBody='',sentAt='',workdayDate=''}={}) => {
+export const addConnection = (project,{name,company,companyId='',contactId='',accountId,owner='Omar',messageBody='',sentAt='',workdayDate='',allowExistingCompany=false}={}) => {
   let cleanName=String(name||'').trim(),cleanCompany=String(company||'').trim();
   const account=getAccount(accountId);
   const companyRaw=getRawCompany(project,companyId||cleanCompany);
   const archived=archivedCompanyMatch(state.companies[project]||[],companyId||cleanCompany);
-  if(archived&&!companyRaw) return {ok:false,reason:'archived-company',companyId:archived.id,company:archived.company};
+  if(archived&&!companyRaw&&!allowExistingCompany) return {ok:false,reason:'archived-company',companyId:archived.id,company:archived.company};
   if(companyId&&!companyRaw) return {ok:false,reason:'invalid-company'};
   if(companyRaw) ensureCompanyContacts(companyRaw);
 
@@ -782,7 +782,7 @@ export const addConnection = (project,{name,company,companyId='',contactId='',ac
 };
 
 export const addConnectionsBulk=(project,{items=[],accountId,owner='Omar',sentAt='',workdayDate=''}={})=>{
-  const results=items.map(item=>addConnection(project,{name:item.name,company:item.company,companyId:item.companyId||'',contactId:item.contactId||'',accountId,owner,sentAt,workdayDate}));
+  const results=items.map(item=>addConnection(project,{name:item.name,company:item.company,companyId:item.companyId||'',contactId:item.contactId||'',accountId,owner,sentAt,workdayDate,allowExistingCompany:Boolean(item.allowExistingCompany)}));
   return {
     added:results.filter(x=>x.ok).length,
     duplicates:results.filter(x=>!x.ok&&x.reason==='duplicate').length,

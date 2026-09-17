@@ -10,7 +10,7 @@ import {
   getRelationshipId,
   getCompany,
   getActivities
-} from './crmState.js?v=20260917-accountuuid1';
+} from './crmState.js?v=20260917-multicontact1';
 
 export const isBackendEnabled=()=>Boolean(backendConfig.enabled);
 
@@ -65,7 +65,7 @@ export const backendAddConnection=async(project,payload)=>{
   const token=await tokenOrThrow();
   const rows=await backendOperations.addConnectionsBatch(token,{
     productCode:project,accountId:payload.accountId,sentAt:payload.sentAt,workdayDate:payload.workdayDate||null,
-    items:[{name:payload.name,company:payload.company,companyId:payload.companyId||'',contactId:payload.contactId||'',messageBody:payload.messageBody||''}]
+    items:[{name:payload.name,company:payload.company,companyId:payload.companyId||'',contactId:payload.contactId||'',messageBody:payload.messageBody||'',allowExistingCompany:Boolean(payload.allowExistingCompany)}]
   });
   const row=Array.isArray(rows)?rows[0]:null;
   if(!row) return {ok:false,reason:'backend-error'};

@@ -6,7 +6,7 @@ import {
   getActivityAnalytics,
   getActiveOwners,
   getNeedsAttention as getSharedNeedsAttention
-} from './crmState.js?v=20260917-accountuuid1';
+} from './crmState.js?v=20260917-multicontact1';
 import { withinRange } from './date.js';
 
 const ownerMatch = (row, owner) => owner === 'ALL' || row.owner === owner;

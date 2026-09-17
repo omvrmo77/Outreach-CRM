@@ -1,5 +1,5 @@
 import { getProject } from './projectState.js';
-import { accounts, getSelectedAccount, getConnections, getAccount, getCompanies, getHistoricalConnectionPaging } from './crmState.js?v=20260917-accountuuid1';
+import { accounts, getSelectedAccount, getConnections, getAccount, getCompanies, getHistoricalConnectionPaging } from './crmState.js?v=20260917-multicontact1';
 import { icon } from './icons.js';
 import { formatDateTime, formatDeviceDateTime, toLocalDateInputValue, getDeviceTimeValue, getDeviceTimeZone, getWorkspaceDateKey, timeParts12h, hourOptions12h, minuteOptions, periodOptions } from './date.js';
 import { esc } from './html.js';
@@ -50,7 +50,7 @@ export const connectionsPage = () => {
       <div class="field connection-known-contact-field">
         <label>Existing CRM contact <span class="cell-muted">(recommended when already saved)</span></label>
         <select id="connection-known-contact"><option value="">New / not saved in CRM yet</option>${knownContactOptions}</select>
-        <small>Choose the exact saved contact when available. Same-name people are distinguished by company and role.</small>
+        <small>Choose the exact saved contact when available. You can add a different person at the same company after confirming the warning; the exact same person is still blocked as a duplicate.</small>
       </div>
       ${selectedAccount.platform==='LinkedIn'?`<div class="connection-entry-grid">
         <div>

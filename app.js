@@ -10,14 +10,14 @@ import {
   addConnection, addConnectionsBulk, setSelectedAccount, updateConnectionStatus, findConnection, getAccount, getConnections, getSelectedAccount,
   addCompany, getCompany, getActivities, recordCompanyAction, deleteLocalCompany, deleteActivity, updateActivity, undoLastAction, getActivityAnalytics, exportPrototypeSnapshot,
   getNoRepeatCompanies, canonicalizeIdentity, getCompanyContacts, getMeetingRecords, getFollowupRecords, getHistoricalConnectionPaging
-} from './crmState.js?v=20260917-accountuuid1';
+} from './crmState.js?v=20260917-multicontact1';
 import { esc } from './html.js';
 import { renderAnalyticsDayPanel } from './activityAnalytics.js?v=20260917-connanalytics1';
 import { activityActions } from './activityActions.js';
 import { combine12hTime, toLocalDateInputValue, getDeviceTimeValue, getDeviceDateKey, getWorkspaceDateKey, formatWorkspaceDateKey, formatDate, formatDateTime, timeParts12h, localDateTimeToDate, addWorkspaceDays, validateLocalDateTime } from './date.js';
 import { safeDecodeRouteComponent } from './route.js';
 import { parseBatchCandidates, batchCheckSummary } from './batchCheck.js';
-import { isBackendEnabled, syncBackendState, backendAddConnection, backendAddConnectionsBulk, backendAddCompany, backendRecordCompanyAction, backendUpdateActivity, backendDeleteActivity, backendUndoLastAction, backendArchiveCompany, backendSetProfileAccess, backendInviteMember, backendCheckBatch, backendLoadHistoricalConnections } from './backendSync.js?v=20260917-connanalytics1';
+import { isBackendEnabled, syncBackendState, backendAddConnection, backendAddConnectionsBulk, backendAddCompany, backendRecordCompanyAction, backendUpdateActivity, backendDeleteActivity, backendUndoLastAction, backendArchiveCompany, backendSetProfileAccess, backendInviteMember, backendCheckBatch, backendLoadHistoricalConnections } from './backendSync.js?v=20260917-multicontact1';
 
 const app = document.getElementById('app');
 let launching = true;
@@ -30,6 +30,24 @@ const showToast = (id, text) => {
   if(text) toast.textContent=text;
   toast.classList.add('show');
   setTimeout(()=>toast.classList.remove('show'),1600);
+};
+
+const differentContactWarning = (project,{name='',company='',companyId='',contactId=''}={}) => {
+  const existing=getCompany(project,companyId||company);
+  if(!existing) return null;
+  const target=canonicalizeIdentity(name);
+  const contacts=getCompanyContacts(existing);
+  const exact=contacts.some(c=>c.id===contactId || canonicalizeIdentity(c.name)===target);
+  if(exact) return null;
+  const others=contacts.filter(c=>canonicalizeIdentity(c.name)!==target);
+  if(!others.length) return null;
+  return {company:existing.company,others};
+};
+
+const confirmAdditionalCompanyContact = ({name,company,others=[]}={}) => {
+  const preview=others.slice(0,3).map(c=>c.name).filter(Boolean).join(', ');
+  const more=others.length>3?` and ${others.length-3} more`:'';
+  return confirm(`“${company}” already has another contact in the CRM${preview?` (${preview}${more})`:''}.\n\nIf ${name} is a different person and you already sent this connection request, click OK to add them anyway.\n\nThe exact same person will still be blocked as a duplicate.`);
 };
 
 
@@ -205,15 +223,29 @@ const bindConnections = () => {
     if(!name||!company||!selected||!sentAt) return;
     if(!validateOccurredFormInstant(document.getElementById('connection-date'),sentAt,'This connection request is in the future. Outreach activity must use a time that has already occurred.')) return;
     if(selectedAccount.platform==='X' && !messageBody) return;
+    let allowExistingCompany=false;
+    const contactWarning=differentContactWarning(project,{name,company,companyId,contactId});
+    if(contactWarning){
+      if(!confirmAdditionalCompanyContact({name,company:contactWarning.company,others:contactWarning.others})) return;
+      allowExistingCompany=true;
+    }
     let result;
     try{
       result=isBackendEnabled()
-        ? await backendAddConnection(project,{name,company,companyId,contactId,accountId:selected,messageBody,sentAt,workdayDate})
-        : addConnection(project,{name,company,companyId,contactId,accountId:selected,owner:currentOwner(),messageBody,sentAt,workdayDate});
+        ? await backendAddConnection(project,{name,company,companyId,contactId,accountId:selected,messageBody,sentAt,workdayDate,allowExistingCompany})
+        : addConnection(project,{name,company,companyId,contactId,accountId:selected,owner:currentOwner(),messageBody,sentAt,workdayDate,allowExistingCompany});
+      if(!result.ok && result.reason==='archived-company' && !allowExistingCompany){
+        const okay=confirm(`“${company}” already exists in LFG history.\n\nIf ${name} is a different person at this company and you already sent this connection request, click OK to add this person anyway.`);
+        if(!okay){ showToast('connection-toast','Connection not added'); return; }
+        allowExistingCompany=true;
+        result=isBackendEnabled()
+          ? await backendAddConnection(project,{name,company,companyId,contactId,accountId:selected,messageBody,sentAt,workdayDate,allowExistingCompany:true})
+          : addConnection(project,{name,company,companyId,contactId,accountId:selected,owner:currentOwner(),messageBody,sentAt,workdayDate,allowExistingCompany:true});
+      }
     }catch(error){showToast('connection-toast',error.message||'Connection could not be saved');return;}
     if(!result.ok && result.reason==='duplicate'){ showToast('connection-toast','Duplicate connection already exists for this exact contact'); return; }
     if(!result.ok && (result.reason==='ambiguous-contact'||result.reason==='ambiguous-company')){ showToast('connection-toast','Multiple matching records exist — choose the exact CRM contact above'); return; }
-    if(!result.ok && result.reason==='archived-company'){ showToast('connection-toast','This company was previously archived and remains protected by the Master no-repeat list'); return; }
+    if(!result.ok && result.reason==='archived-company'){ showToast('connection-toast','This company already exists in LFG history. Use Add anyway only for a genuinely different person.'); return; }
     if(!result.ok && result.reason==='future-activity'){ showToast('connection-toast','This activity is in the future. Use a time that has already occurred.'); return; }
     if(!result.ok){ showToast('connection-toast','Connection could not be saved'); return; }
     render();
@@ -224,10 +256,18 @@ const bindConnections = () => {
     const selected=document.querySelector('.account-choice.selected')?.dataset.accountSelect;
     const raw=document.getElementById('bulk-connections')?.value||'';
     if(!selected||!raw.trim()) return;
-    const items=raw.split(/\r?\n/).map(line=>line.trim()).filter(Boolean).map(line=>{
+    let items=raw.split(/\r?\n/).map(line=>line.trim()).filter(Boolean).map(line=>{
       const parts=line.split(/\s*[|\t]\s*/);
       return {name:(parts[0]||'').trim(),company:(parts.slice(1).join(' | ')||'').trim()};
     }).filter(x=>x.name&&x.company);
+    const additional=items.map((item,index)=>({index,item,warning:differentContactWarning(project,item)})).filter(x=>x.warning);
+    if(additional.length){
+      const companyNames=[...new Set(additional.map(x=>x.warning.company))];
+      const okay=confirm(`${additional.length} connection${additional.length===1?'':'s'} ${additional.length===1?'is':'are'} for companies that already have another contact in the CRM:\n\n${companyNames.slice(0,8).join('\n')}${companyNames.length>8?`\n+ ${companyNames.length-8} more`:''}\n\nClick OK only if these are genuinely different people and you already sent the connection requests. Exact-person duplicates will still be blocked.`);
+      if(!okay) return;
+      const warned=new Set(additional.map(x=>x.index));
+      items=items.map((item,index)=>warned.has(index)?{...item,allowExistingCompany:true}:item);
+    }
     const connectionTime=combine12hTime(document.getElementById('connection-hour')?.value,document.getElementById('connection-minute')?.value,document.getElementById('connection-period')?.value);
     const sentAt=resolveLocalFormInstant(document.getElementById('connection-date'),connectionTime);
     const workdayDate=document.getElementById('connection-workday')?.value||getWorkspaceDateKey(sentAt);
