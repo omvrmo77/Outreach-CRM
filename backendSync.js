@@ -54,7 +54,7 @@ export const backendLoadHistoricalConnections=async(project,{offset=0,limit=50}=
 export const backendAddConnection=async(project,payload)=>{
   const token=await tokenOrThrow();
   const rows=await backendOperations.addConnectionsBatch(token,{
-    productCode:project,accountId:payload.accountId,sentAt:payload.sentAt,
+    productCode:project,accountId:payload.accountId,sentAt:payload.sentAt,workdayDate:payload.workdayDate||null,
     items:[{name:payload.name,company:payload.company,companyId:payload.companyId||'',contactId:payload.contactId||'',messageBody:payload.messageBody||''}]
   });
   const row=Array.isArray(rows)?rows[0]:null;
@@ -64,9 +64,9 @@ export const backendAddConnection=async(project,payload)=>{
   return {ok:true,connectionId:row.connection_id,...row};
 };
 
-export const backendAddConnectionsBulk=async(project,{items,accountId,sentAt})=>{
+export const backendAddConnectionsBulk=async(project,{items,accountId,sentAt,workdayDate=null})=>{
   const token=await tokenOrThrow();
-  const rows=await backendOperations.addConnectionsBatch(token,{productCode:project,accountId,sentAt,items});
+  const rows=await backendOperations.addConnectionsBatch(token,{productCode:project,accountId,sentAt,workdayDate,items});
   const list=Array.isArray(rows)?rows:[];
   const addedIds=list.filter(x=>x.status==='added').map(x=>x.connection_id).filter(Boolean);
   if(addedIds.length) await refreshConnectionsByIds(project,addedIds);
@@ -80,11 +80,11 @@ export const backendAddConnectionsBulk=async(project,{items,accountId,sentAt})=>
   };
 };
 
-export const backendAddCompany=async(project,parsed,{accountId,messageBody,messageSentAt,forceNewContact=false,companyId='',contactId='',matchedConnectionId=''}={})=>{
+export const backendAddCompany=async(project,parsed,{accountId,messageBody,messageSentAt,workdayDate=null,forceNewContact=false,companyId='',contactId='',matchedConnectionId=''}={})=>{
   const token=await tokenOrThrow();
   const result=await backendOperations.addRelationship(token,{
     productCode:project,accountId,payload:parsed,companyId:companyId||null,contactId:forceNewContact?null:(contactId||null),matchedConnectionId:matchedConnectionId||null,
-    forceNewContact,messageText:messageBody,occurredAt:messageSentAt
+    forceNewContact,messageText:messageBody,occurredAt:messageSentAt,workdayDate
   });
   if(!result?.ok){
     if(result?.reason==='duplicate-contact') result.reason='duplicate';
@@ -99,7 +99,7 @@ export const backendAddCompany=async(project,parsed,{accountId,messageBody,messa
 
 const backendEventType=(type='')=>({replied:'reply_received',followup_sent:'follow_up_sent',followup_scheduled:'follow_up_scheduled'}[type]||type);
 
-export const backendRecordCompanyAction=async(project,companyRef,type,{at,scheduledFor,detail='',detailLabel='',secondaryDetail='',secondaryLabel='',contactId='',accountId='',meetingId='',followupId=''}={})=>{
+export const backendRecordCompanyAction=async(project,companyRef,type,{at,workdayDate=null,scheduledFor,detail='',detailLabel='',secondaryDetail='',secondaryLabel='',contactId='',accountId='',meetingId='',followupId=''}={})=>{
   const company=getCompany(project,companyRef);
   const relationshipId=getRelationshipId(project,companyRef,contactId);
   if(!relationshipId) throw new Error('This contact is not linked to a backend relationship yet.');
@@ -121,13 +121,14 @@ export const backendRecordCompanyAction=async(project,companyRef,type,{at,schedu
     p_follow_up_due_at:type==='followup_scheduled'?(scheduledFor||null):null,
     p_meeting_id:meetingId||null,
     p_followup_id:followupId||null,
-    p_metadata:{detail_label:detailLabel||'',secondary_detail:secondaryDetail||'',secondary_label:secondaryLabel||''}
+    p_metadata:{detail_label:detailLabel||'',secondary_detail:secondaryDetail||'',secondary_label:secondaryLabel||''},
+    p_workday_date:workdayDate||null
   });
   if(company?.id) await refreshBackendCompany(project,company.id);
   return result;
 };
 
-export const backendUpdateActivity=async(project,companyRef,activityId,{at,scheduledFor,detail='',secondaryDetail='',secondaryLabel='',detailLabel='',contactId='',accountId='',type=''}={})=>{
+export const backendUpdateActivity=async(project,companyRef,activityId,{at,workdayDate=null,scheduledFor,detail='',secondaryDetail='',secondaryLabel='',detailLabel='',contactId='',accountId='',type=''}={})=>{
   const company=getCompany(project,companyRef);
   const token=await tokenOrThrow();
   const eventType=type||'';
@@ -142,7 +143,8 @@ export const backendUpdateActivity=async(project,companyRef,activityId,{at,sched
     p_scheduled_end_at:null,
     p_follow_up_due_at:eventType==='followup_scheduled'?(scheduledFor||null):null,
     p_contact_id:contactId||null,
-    p_metadata:{detail_label:detailLabel||'',secondary_detail:secondaryDetail||'',secondary_label:secondaryLabel||''}
+    p_metadata:{detail_label:detailLabel||'',secondary_detail:secondaryDetail||'',secondary_label:secondaryLabel||''},
+    p_workday_date:workdayDate||null
   });
   if(company?.id) await refreshBackendCompany(project,company.id);
   return result;

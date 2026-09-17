@@ -1,7 +1,7 @@
 import { getProject } from './projectState.js';
 import { icon } from './icons.js';
 import { getAccounts, getSelectedAccount } from './crmState.js';
-import { toLocalDateInputValue, getDeviceTimeValue, getDeviceTimeZone, timeParts12h, hourOptions12h, minuteOptions, periodOptions } from './date.js';
+import { toLocalDateInputValue, getDeviceTimeValue, getDeviceTimeZone, getWorkspaceDateKey, formatWorkspaceDateKey, timeParts12h, hourOptions12h, minuteOptions, periodOptions } from './date.js';
 
 export const addCompanyPage = () => {
   const p = getProject();
@@ -35,7 +35,8 @@ export const addCompanyPage = () => {
             <div class="field"><label>Message sent date</label><input id="initial-message-date" type="date" value="${toLocalDateInputValue(now)}"></div>
             <div class="field"><label>Message sent time</label><div class="time-part-picker"><select id="initial-message-hour">${hourOptions12h(nowParts.hour)}</select><span class="time-colon">:</span><select id="initial-message-minute">${minuteOptions(nowParts.minute)}</select><select id="initial-message-period">${periodOptions(nowParts.period)}</select></div></div>
           </div>
-          <div class="local-time-help">Your device time: <strong>${getDeviceTimeZone()}</strong>. The CRM converts this automatically for Chicago-based reporting.</div>
+          <div class="local-time-help">Your device time: <strong>${getDeviceTimeZone()}</strong>. The exact timestamp is always preserved.</div>
+          <div class="field workday-field"><label>Count toward workday</label><input id="initial-message-workday" type="date" value="${getWorkspaceDateKey(now)}"><small>The reporting day only. This never changes the real message timestamp.</small></div>
           <div class="field"><label>Message sent</label><textarea id="initial-message-body" placeholder="Paste the exact message that was sent." required></textarea><small class="field-help">Required. This becomes the first message in the relationship timeline.</small></div>
         </div>
 

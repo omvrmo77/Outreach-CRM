@@ -14,10 +14,10 @@ import {
 import { esc } from './html.js';
 import { renderAnalyticsDayPanel } from './activityAnalytics.js';
 import { activityActions } from './activityActions.js';
-import { combine12hTime, toLocalDateInputValue, getDeviceTimeValue, getDeviceDateKey, getWorkspaceDateKey, formatDate, formatDateTime, timeParts12h, localDateTimeToDate, addWorkspaceDays, validateLocalDateTime } from './date.js';
+import { combine12hTime, toLocalDateInputValue, getDeviceTimeValue, getDeviceDateKey, getWorkspaceDateKey, formatWorkspaceDateKey, formatDate, formatDateTime, timeParts12h, localDateTimeToDate, addWorkspaceDays, validateLocalDateTime } from './date.js';
 import { safeDecodeRouteComponent } from './route.js';
 import { parseBatchCandidates, batchCheckSummary } from './batchCheck.js';
-import { isBackendEnabled, syncBackendState, backendAddConnection, backendAddConnectionsBulk, backendAddCompany, backendRecordCompanyAction, backendUpdateActivity, backendDeleteActivity, backendUndoLastAction, backendArchiveCompany, backendSetProfileAccess, backendInviteMember, backendCheckBatch, backendLoadHistoricalConnections } from './backendSync.js?v=20260916-invitefix2';
+import { isBackendEnabled, syncBackendState, backendAddConnection, backendAddConnectionsBulk, backendAddCompany, backendRecordCompanyAction, backendUpdateActivity, backendDeleteActivity, backendUndoLastAction, backendArchiveCompany, backendSetProfileAccess, backendInviteMember, backendCheckBatch, backendLoadHistoricalConnections } from './backendSync.js?v=20260917-workday1';
 
 const app = document.getElementById('app');
 let launching = true;
@@ -30,6 +30,23 @@ const showToast = (id, text) => {
   if(text) toast.textContent=text;
   toast.classList.add('show');
   setTimeout(()=>toast.classList.remove('show'),1600);
+};
+
+
+const configureWorkdayField=(fieldId,instantGetter,{preserve=false}={})=>{
+  const field=document.getElementById(fieldId); if(!field) return;
+  let touched=preserve;
+  const sync=()=>{
+    const instant=instantGetter?.(); if(!instant) return;
+    const actual=getWorkspaceDateKey(instant); if(!actual) return;
+    field.min=addWorkspaceDays(actual,-1); field.max=actual;
+    if(!touched || !field.value || field.value>actual || field.value<field.min) field.value=actual;
+    const help=field.parentElement?.querySelector('small');
+    if(help) help.textContent=`Actual Chicago business date: ${formatWorkspaceDateKey(actual,{weekday:'short'})}. You may count this toward ${formatWorkspaceDateKey(addWorkspaceDays(actual,-1),{weekday:'short'})} if you are finishing the previous workday.`;
+  };
+  field.addEventListener('change',()=>{touched=true;});
+  sync();
+  return sync;
 };
 
 const resolveLocalFormInstant = (dateElement, timeValue) => {
@@ -167,6 +184,10 @@ const bindConnections = () => {
   knownContact?.addEventListener('change',syncKnownContact);
   syncKnownContact();
 
+  const connectionInstant=()=>{const time=combine12hTime(document.getElementById('connection-hour')?.value,document.getElementById('connection-minute')?.value,document.getElementById('connection-period')?.value);return resolveLocalFormInstant(document.getElementById('connection-date'),time);};
+  const syncConnectionWorkday=configureWorkdayField('connection-workday',connectionInstant);
+  ['connection-date','connection-hour','connection-minute','connection-period'].forEach(id=>document.getElementById(id)?.addEventListener('change',()=>syncConnectionWorkday?.()));
+
   const form=document.getElementById('quick-connection-form');
   if(form) form.addEventListener('submit',async e=>{
     e.preventDefault();
@@ -180,14 +201,15 @@ const bindConnections = () => {
     const selectedAccount=getAccount(selected);
     const connectionTime=combine12hTime(document.getElementById('connection-hour')?.value,document.getElementById('connection-minute')?.value,document.getElementById('connection-period')?.value);
     const sentAt=resolveLocalFormInstant(document.getElementById('connection-date'),connectionTime);
+    const workdayDate=document.getElementById('connection-workday')?.value||getWorkspaceDateKey(sentAt);
     if(!name||!company||!selected||!sentAt) return;
     if(!validateOccurredFormInstant(document.getElementById('connection-date'),sentAt,'This connection request is in the future. Outreach activity must use a time that has already occurred.')) return;
     if(selectedAccount.platform==='X' && !messageBody) return;
     let result;
     try{
       result=isBackendEnabled()
-        ? await backendAddConnection(project,{name,company,companyId,contactId,accountId:selected,messageBody,sentAt})
-        : addConnection(project,{name,company,companyId,contactId,accountId:selected,owner:currentOwner(),messageBody,sentAt});
+        ? await backendAddConnection(project,{name,company,companyId,contactId,accountId:selected,messageBody,sentAt,workdayDate})
+        : addConnection(project,{name,company,companyId,contactId,accountId:selected,owner:currentOwner(),messageBody,sentAt,workdayDate});
     }catch(error){showToast('connection-toast',error.message||'Connection could not be saved');return;}
     if(!result.ok && result.reason==='duplicate'){ showToast('connection-toast','Duplicate connection already exists for this exact contact'); return; }
     if(!result.ok && (result.reason==='ambiguous-contact'||result.reason==='ambiguous-company')){ showToast('connection-toast','Multiple matching records exist — choose the exact CRM contact above'); return; }
@@ -208,11 +230,12 @@ const bindConnections = () => {
     }).filter(x=>x.name&&x.company);
     const connectionTime=combine12hTime(document.getElementById('connection-hour')?.value,document.getElementById('connection-minute')?.value,document.getElementById('connection-period')?.value);
     const sentAt=resolveLocalFormInstant(document.getElementById('connection-date'),connectionTime);
+    const workdayDate=document.getElementById('connection-workday')?.value||getWorkspaceDateKey(sentAt);
     if(!sentAt) return;
     if(!validateOccurredFormInstant(document.getElementById('connection-date'),sentAt,'These connection requests are in the future. Outreach activity must use a time that has already occurred.')) return;
     let result;
     try{
-      result=isBackendEnabled()?await backendAddConnectionsBulk(project,{items,accountId:selected,sentAt}):addConnectionsBulk(project,{items,accountId:selected,owner:currentOwner(),sentAt});
+      result=isBackendEnabled()?await backendAddConnectionsBulk(project,{items,accountId:selected,sentAt,workdayDate}):addConnectionsBulk(project,{items,accountId:selected,owner:currentOwner(),sentAt,workdayDate});
     }catch(error){showToast('connection-toast',error.message||'Connections could not be saved');return;}
     const label=document.getElementById('bulk-connection-result');
     if(label) label.textContent=`${result.added} added${result.duplicates?` · ${result.duplicates} duplicates skipped`:''}${result.ambiguous?` · ${result.ambiguous} need exact contact selection`:''}${result.archived?` · ${result.archived} archived/no-repeat protected`:''}${result.future?` · ${result.future} future timestamps rejected`:''}`;
@@ -398,6 +421,10 @@ const bindAddCompany = () => {
   document.getElementById('initial-message-body')?.addEventListener('input',refreshCompanySaveState);
   document.getElementById('force-new-contact')?.addEventListener('change',refreshCompanySaveState);
 
+  const initialMessageInstant=()=>{const t=combine12hTime(document.getElementById('initial-message-hour')?.value,document.getElementById('initial-message-minute')?.value,document.getElementById('initial-message-period')?.value);return resolveLocalFormInstant(document.getElementById('initial-message-date'),t);};
+  const syncInitialMessageWorkday=configureWorkdayField('initial-message-workday',initialMessageInstant);
+  ['initial-message-date','initial-message-hour','initial-message-minute','initial-message-period'].forEach(id=>document.getElementById(id)?.addEventListener('change',()=>syncInitialMessageWorkday?.()));
+
   if(save) save.addEventListener('click',async()=>{
     if(!parsedCompanyDraft) return;
     const existing=getCompany(project,parsedCompanyDraft.Company||'');
@@ -410,6 +437,7 @@ const bindAddCompany = () => {
     const accountId=document.getElementById('company-account')?.value||getSelectedAccount(project);
     const messageTime=combine12hTime(document.getElementById('initial-message-hour')?.value,document.getElementById('initial-message-minute')?.value,document.getElementById('initial-message-period')?.value);
     const messageSentAt=resolveLocalFormInstant(document.getElementById('initial-message-date'),messageTime);
+    const workdayDate=document.getElementById('initial-message-workday')?.value||getWorkspaceDateKey(messageSentAt);
     if(!messageSentAt){ showToast('company-toast','Choose when the message was sent'); return; }
     if(!completingX&&!validateOccurredFormInstant(document.getElementById('initial-message-date'),messageSentAt)) return;
     if(!completingX&&match&&getAccount(match.accountId).platform==='LinkedIn'&&new Date(messageSentAt)<new Date(match.sentAt)){
@@ -421,7 +449,7 @@ const bindAddCompany = () => {
     let result;
     try{
       result=isBackendEnabled()
-        ? await backendAddCompany(project,parsedCompanyDraft,{messageBody,accountId,messageSentAt,forceNewContact,companyId:existing?.id||'',contactId:exactContact?.id||'',matchedConnectionId:match?.id||''})
+        ? await backendAddCompany(project,parsedCompanyDraft,{messageBody,accountId,messageSentAt,workdayDate,forceNewContact,companyId:existing?.id||'',contactId:exactContact?.id||'',matchedConnectionId:match?.id||''})
         : addCompany(project,parsedCompanyDraft,{messageBody,owner:currentOwner(),accountId,messageSentAt,forceNewContact});
     }catch(error){showToast('company-toast',error.message||'Company could not be saved');return;}
     if(!result.ok&&result.reason==='missing-message'){ showToast('company-toast','First message is required'); return; }
@@ -532,6 +560,10 @@ const bindCompanyProfile = () => {
     } else meetingFields?.classList.add('hidden');
     refreshOperationalTargets(type,existing);
     setPickerTime('activity',existing?.at||new Date());
+    const workday=document.getElementById('activity-workday'); if(workday) workday.value=existing?.workdayDate||getWorkspaceDateKey(existing?.at||new Date());
+    const activityInstant=()=>{const t=combine12hTime(document.getElementById('activity-hour')?.value,document.getElementById('activity-minute')?.value,document.getElementById('activity-period')?.value);return resolveLocalFormInstant(document.getElementById('activity-date'),t);};
+    const syncActivityWorkday=configureWorkdayField('activity-workday',activityInstant,{preserve:Boolean(existing)});
+    ['activity-date','activity-hour','activity-minute','activity-period'].forEach(id=>document.getElementById(id)?.addEventListener('change',()=>syncActivityWorkday?.()));
     modal.classList.add('show'); modal.setAttribute('aria-hidden','false');
     setTimeout(()=>detail?.focus(),40);
   };
@@ -555,6 +587,7 @@ const bindCompanyProfile = () => {
     const activityDate=document.getElementById('activity-date')?.value;
     const activityTime=combine12hTime(document.getElementById('activity-hour')?.value,document.getElementById('activity-minute')?.value,document.getElementById('activity-period')?.value);
     const at=resolveLocalFormInstant(document.getElementById('activity-date'),activityTime);
+      const workdayDate=document.getElementById('activity-workday')?.value||getWorkspaceDateKey(at);
     const detail=document.getElementById('activity-detail')?.value.trim()||'';
     const secondaryDetail=document.getElementById('activity-secondary')?.value.trim()||'';
     if(!at) return;
@@ -582,8 +615,8 @@ const bindCompanyProfile = () => {
       let updated;
       try{
         updated=isBackendEnabled()
-          ? await backendUpdateActivity(project,companyName,editId,{type,at,scheduledFor,detail,detailLabel:config.detailLabel||'Details',secondaryDetail,secondaryLabel:config.secondaryLabel||'',contactId,accountId})
-          : updateActivity(project,editId,{at,scheduledFor,detail,detailLabel:config.detailLabel||'Details',secondaryDetail,secondaryLabel:config.secondaryLabel||'',contactId,contact:selectedContact?.name||'',contactRole:selectedContact?.role||'',accountId},actor);
+          ? await backendUpdateActivity(project,companyName,editId,{type,at,workdayDate,scheduledFor,detail,detailLabel:config.detailLabel||'Details',secondaryDetail,secondaryLabel:config.secondaryLabel||'',contactId,accountId})
+          : updateActivity(project,editId,{at,workdayDate,scheduledFor,detail,detailLabel:config.detailLabel||'Details',secondaryDetail,secondaryLabel:config.secondaryLabel||'',contactId,contact:selectedContact?.name||'',contactRole:selectedContact?.role||'',accountId},actor);
       }catch(error){showToast('profile-toast',error.message||'Activity could not be updated');return;}
       if(!updated||updated.ok===false){ showToast('profile-toast','Activity could not be updated. Check the timestamp and relationship chronology.'); return; }
       render(); showToast('profile-toast','Activity updated · previous value kept in history');
@@ -594,8 +627,8 @@ const bindCompanyProfile = () => {
       let created;
       try{
         created=isBackendEnabled()
-          ? await backendRecordCompanyAction(project,companyName,type,{at,scheduledFor,detail,detailLabel:config.detailLabel||'Details',secondaryDetail,secondaryLabel:config.secondaryLabel||'',contactId,accountId,meetingId,followupId})
-          : recordCompanyAction(project,companyName,type,{at,scheduledFor,detail,detailLabel:config.detailLabel||'Details',secondaryDetail,secondaryLabel:config.secondaryLabel||'',actor,contactId,accountId,meetingId,followupId});
+          ? await backendRecordCompanyAction(project,companyName,type,{at,workdayDate,scheduledFor,detail,detailLabel:config.detailLabel||'Details',secondaryDetail,secondaryLabel:config.secondaryLabel||'',contactId,accountId,meetingId,followupId})
+          : recordCompanyAction(project,companyName,type,{at,workdayDate,scheduledFor,detail,detailLabel:config.detailLabel||'Details',secondaryDetail,secondaryLabel:config.secondaryLabel||'',actor,contactId,accountId,meetingId,followupId});
       }catch(error){showToast('profile-toast',error.message||'Activity could not be saved');return;}
       if(!created||created.ok===false){ showToast('profile-toast','Choose the exact open meeting or follow-up record'); return; }
       render(); showToast('profile-toast','Activity saved');

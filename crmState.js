@@ -404,7 +404,7 @@ export const hydrateBackendState = (project,snapshot={}) => {
       id:row.id,recordedAt:row.recorded_at||row.occurred_at,deletedAt:null,actionGroupId:row.action_group_id||'',companyId:row.company_id||'',company:c.name||row.company_name_snapshot||'',
       contactId:row.contact_id||'',contact:ct.full_name||row.contact_name_snapshot||'',contactRole:ct.title||row.contact_title_snapshot||'',
       owner:backendOwnerName(row.relationship_owner_user_id,row.relationship_owner_snapshot,profileMap),ownerId:row.relationship_owner_user_id||'',actor:row.actor_name_snapshot||backendOwnerName(row.actor_user_id,'',profileMap),
-      actorId:row.actor_user_id||'',accountId:row.outreach_account_id||'',type,label:eventLabel[type]||type,at:row.occurred_at,
+      actorId:row.actor_user_id||'',accountId:row.outreach_account_id||'',type,label:eventLabel[type]||type,at:row.occurred_at,workdayDate:row.workday_date||metadata.workday_date||'',
       scheduledFor:row.scheduled_for||row.follow_up_due_at||null,previousScheduledFor:row.previous_scheduled_for||null,
       detail,detailLabel:metadata.detail_label||'',secondaryDetail:metadata.secondary_detail||'',secondaryLabel:metadata.secondary_label||'',note:row.note||'',
       meetingId:row.meeting_id||'',followupId:row.followup_id||'',sourceConnectionId:row.connection_id||'',sourceConfidence:row.source_confidence||'',
@@ -547,7 +547,7 @@ export const mergeBackendCompanyBundle = (project,companyId,bundle={}) => {
       id:row.id,recordedAt:row.recorded_at||row.occurred_at,deletedAt:null,actionGroupId:row.action_group_id||'',companyId:row.company_id||companyId,company:companyName||row.company_name_snapshot||'',
       contactId:row.contact_id||'',contact:ct.full_name||row.contact_name_snapshot||'',contactRole:ct.title||row.contact_title_snapshot||'',
       owner:backendOwnerName(row.relationship_owner_user_id,row.relationship_owner_snapshot,profileMap),ownerId:row.relationship_owner_user_id||'',actor:row.actor_name_snapshot||backendOwnerName(row.actor_user_id,'',profileMap),
-      actorId:row.actor_user_id||'',accountId:row.outreach_account_id||'',type,label:eventLabel[type]||type,at:row.occurred_at,
+      actorId:row.actor_user_id||'',accountId:row.outreach_account_id||'',type,label:eventLabel[type]||type,at:row.occurred_at,workdayDate:row.workday_date||metadata.workday_date||'',
       scheduledFor:row.scheduled_for||row.follow_up_due_at||null,previousScheduledFor:row.previous_scheduled_for||null,
       detail,detailLabel:metadata.detail_label||'',secondaryDetail:metadata.secondary_detail||'',secondaryLabel:metadata.secondary_label||'',note:row.note||'',
       meetingId:row.meeting_id||'',followupId:row.followup_id||'',sourceConnectionId:row.connection_id||'',sourceConfidence:row.source_confidence||'',
@@ -675,7 +675,7 @@ const pushActivity=(project,event)=>{
 
 const baseActivityRefs=(raw,contact)=>({companyId:raw?.id||'',company:raw?.company||'',contactId:contact?.id||'',contact:contact?.name||'',contactRole:contact?.role||''});
 
-export const addConnection = (project,{name,company,companyId='',contactId='',accountId,owner='Omar',messageBody='',sentAt=''}={}) => {
+export const addConnection = (project,{name,company,companyId='',contactId='',accountId,owner='Omar',messageBody='',sentAt='',workdayDate=''}={}) => {
   let cleanName=String(name||'').trim(),cleanCompany=String(company||'').trim();
   const account=getAccount(accountId);
   const companyRaw=getRawCompany(project,companyId||cleanCompany);
@@ -720,28 +720,28 @@ export const addConnection = (project,{name,company,companyId='',contactId='',ac
   state.connections[project].push(row);
 
   if(account.platform==='LinkedIn'){
-    pushActivity(project,{companyId:row.companyId,company:row.company,contactId:row.contactId,contact:cleanName,contactRole:row.contactRole,owner,actor:owner,accountId:account.id,type:'connection_sent',label:'Connection sent',at:occurredAt,sourceConnectionId:row.id});
+    pushActivity(project,{companyId:row.companyId,company:row.company,contactId:row.contactId,contact:cleanName,contactRole:row.contactRole,owner,actor:owner,accountId:account.id,type:'connection_sent',label:'Connection sent',at:occurredAt,workdayDate:workdayDate||getWorkspaceDateKey(occurredAt),sourceConnectionId:row.id});
   } else {
     let raw=companyRaw,contactRow=linkedContact; const group=createId('group');
     if(!raw){
       raw=createCompanyRow(project,{}, {company:cleanCompany,contact:cleanName,owner,accountId:account.id,at:occurredAt,provisional:true});
       state.companies[project].push(raw); contactRow=ensureCompanyContacts(raw)[0];
       row.companyId=raw.id; row.company=raw.company; row.contactId=contactRow?.id||''; row.contactRole=contactRow?.role||''; row.provisionalContact=false;
-      pushActivity(project,{actionGroupId:group,...baseActivityRefs(raw,contactRow),owner,actor:owner,accountId:account.id,type:'company_added',label:'Company added',at:occurredAt,sourceConnectionId:row.id,source:'x_outreach'});
+      pushActivity(project,{actionGroupId:group,...baseActivityRefs(raw,contactRow),owner,actor:owner,accountId:account.id,type:'company_added',label:'Company added',at:occurredAt,workdayDate:workdayDate||getWorkspaceDateKey(occurredAt),sourceConnectionId:row.id,source:'x_outreach'});
     } else if(!contactRow){
       contactRow=addContactToCompany(raw,{name:cleanName,accountId:account.id,createdAt:occurredAt,force:true});
       row.companyId=raw.id; row.company=raw.company; row.contactId=contactRow.id; row.contactRole=contactRow.role||''; row.provisionalContact=false;
-      pushActivity(project,{actionGroupId:group,...baseActivityRefs(raw,contactRow),owner:raw.owner||owner,actor:owner,accountId:account.id,type:'contact_added',label:'Contact added',at:occurredAt,sourceConnectionId:row.id,source:'x_outreach'});
+      pushActivity(project,{actionGroupId:group,...baseActivityRefs(raw,contactRow),owner:raw.owner||owner,actor:owner,accountId:account.id,type:'contact_added',label:'Contact added',at:occurredAt,workdayDate:workdayDate||getWorkspaceDateKey(occurredAt),sourceConnectionId:row.id,source:'x_outreach'});
     }
-    const messageEvent=pushActivity(project,{actionGroupId:group,...baseActivityRefs(raw,contactRow),owner:raw.owner||owner,actor:owner,accountId:account.id,type:'message_sent',label:'First message sent',at:occurredAt,detail:String(messageBody||'').trim(),detailLabel:'Message sent',sourceConnectionId:row.id,source:'x_outreach'});
+    const messageEvent=pushActivity(project,{actionGroupId:group,...baseActivityRefs(raw,contactRow),owner:raw.owner||owner,actor:owner,accountId:account.id,type:'message_sent',label:'First message sent',at:occurredAt,workdayDate:workdayDate||getWorkspaceDateKey(occurredAt),detail:String(messageBody||'').trim(),detailLabel:'Message sent',sourceConnectionId:row.id,source:'x_outreach'});
     row.messageSourceActivityId=messageEvent.id;
     state.companyOverrides[project][raw.id]={status:'Message Sent',nextStep:'Wait for reply'};
   }
   save(); return {ok:true,connection:row};
 };
 
-export const addConnectionsBulk=(project,{items=[],accountId,owner='Omar',sentAt=''}={})=>{
-  const results=items.map(item=>addConnection(project,{name:item.name,company:item.company,companyId:item.companyId||'',contactId:item.contactId||'',accountId,owner,sentAt}));
+export const addConnectionsBulk=(project,{items=[],accountId,owner='Omar',sentAt='',workdayDate=''}={})=>{
+  const results=items.map(item=>addConnection(project,{name:item.name,company:item.company,companyId:item.companyId||'',contactId:item.contactId||'',accountId,owner,sentAt,workdayDate}));
   return {
     added:results.filter(x=>x.ok).length,
     duplicates:results.filter(x=>!x.ok&&x.reason==='duplicate').length,
@@ -770,7 +770,7 @@ export const updateConnectionStatus=(project,connectionId,status)=>{
 export const getCompanies=(project)=>(state.companies[project]||[]).filter(x=>!x.deletedAt).map(row=>materializeCompany(project,row));
 export const getCompany=(project,companyRef)=>{const raw=getRawCompany(project,companyRef);return raw?materializeCompany(project,raw):null;};
 
-export const addCompany=(project,parsed,{messageBody='',owner='Omar',accountId='',messageSentAt='',forceNewContact=false}={})=>{
+export const addCompany=(project,parsed,{messageBody='',owner='Omar',accountId='',messageSentAt='',workdayDate='',forceNewContact=false}={})=>{
   const company=String(parsed.Company||'').trim();
   const contact=String(parsed['Contact Name']||parsed.Contact||'').trim();
   const role=String(parsed.Title||'').trim();
@@ -836,10 +836,10 @@ export const addCompany=(project,parsed,{messageBody='',owner='Omar',accountId='
     }
   }
 
-  if(newCompany) pushActivity(project,{actionGroupId:group,...baseActivityRefs(raw,contactRow),owner:raw.owner||owner,actor:owner,accountId:selectedAccountId,type:'company_added',label:'Company added',at:actualMessageAt});
-  else pushActivity(project,{actionGroupId:group,...baseActivityRefs(raw,contactRow),owner:raw.owner||owner,actor:owner,accountId:selectedAccountId,type:'contact_added',label:'Contact added',at:actualMessageAt});
+  if(newCompany) pushActivity(project,{actionGroupId:group,...baseActivityRefs(raw,contactRow),owner:raw.owner||owner,actor:owner,accountId:selectedAccountId,type:'company_added',label:'Company added',at:actualMessageAt,workdayDate:workdayDate||getWorkspaceDateKey(actualMessageAt)});
+  else pushActivity(project,{actionGroupId:group,...baseActivityRefs(raw,contactRow),owner:raw.owner||owner,actor:owner,accountId:selectedAccountId,type:'contact_added',label:'Contact added',at:actualMessageAt,workdayDate:workdayDate||getWorkspaceDateKey(actualMessageAt)});
 
-  const messageEvent=pushActivity(project,{actionGroupId:group,...baseActivityRefs(raw,contactRow),owner:raw.owner||owner,actor:owner,accountId:selectedAccountId,type:'message_sent',label:'First message sent',at:actualMessageAt,detail:message,detailLabel:'Message sent',sourceConnectionId:match?.id||''});
+  const messageEvent=pushActivity(project,{actionGroupId:group,...baseActivityRefs(raw,contactRow),owner:raw.owner||owner,actor:owner,accountId:selectedAccountId,type:'message_sent',label:'First message sent',at:actualMessageAt,workdayDate:workdayDate||getWorkspaceDateKey(actualMessageAt),detail:message,detailLabel:'Message sent',sourceConnectionId:match?.id||''});
 
   if(match&&account.platform==='LinkedIn'&&match.status==='Pending'){
     match.acceptedAt=actualMessageAt; match.acceptanceMethod='inferred_from_message_sent'; match.acceptanceSourceActivityId=messageEvent.id;
@@ -1038,7 +1038,7 @@ const openFollowupRecordsFor=(project,raw,contact)=>getFollowupRecords(project).
 
 const exactOperationalTarget=(records,requestedId)=>requestedId ? records.find(r=>r.id===requestedId)||null : null;
 
-export const recordCompanyAction=(project,companyRef,type,{at,scheduledFor,note='',detail='',detailLabel='',secondaryDetail='',secondaryLabel='',actor='',contactId='',accountId='',meetingId:requestedMeetingId='',followupId:requestedFollowupId=''}={})=>{
+export const recordCompanyAction=(project,companyRef,type,{at,workdayDate='',scheduledFor,note='',detail='',detailLabel='',secondaryDetail='',secondaryLabel='',actor='',contactId='',accountId='',meetingId:requestedMeetingId='',followupId:requestedFollowupId=''}={})=>{
   const raw=getRawCompany(project,companyRef); if(!raw||!actionMap[type])return null;
   ensureCompanyContacts(raw); const selectedContact=raw.contacts.find(c=>c.id===contactId)||raw.contacts[0]||null; if(!selectedContact)return null;
   const eventAt=at||currentInstant().toISOString(); const selectedAccountId=accountId||selectedContact.accountId||getSelectedAccount(project);
@@ -1071,7 +1071,7 @@ export const recordCompanyAction=(project,companyRef,type,{at,scheduledFor,note=
   if(type==='followup_scheduled') followupId=createId('followup');
   else if(followupMutation) followupId=targetFollowup?.id||createId('followup');
 
-  const event=pushActivity(project,{actionGroupId,...baseActivityRefs(raw,selectedContact),owner:raw.owner||'Omar',actor:actor||raw.owner||'Omar',accountId:selectedAccountId,type,label:action.label,at:eventAt,
+  const event=pushActivity(project,{actionGroupId,...baseActivityRefs(raw,selectedContact),owner:raw.owner||'Omar',actor:actor||raw.owner||'Omar',accountId:selectedAccountId,type,label:action.label,at:eventAt,workdayDate:workdayDate||getWorkspaceDateKey(eventAt),
     scheduledFor:scheduledFor||null,previousScheduledFor:type==='meeting_rescheduled'?(targetMeeting?.scheduledFor||null):null,note,detail:String(detail||'').trim(),detailLabel,
     secondaryDetail:String(secondaryDetail||'').trim(),secondaryLabel,meetingId,followupId});
 
@@ -1081,7 +1081,7 @@ export const recordCompanyAction=(project,companyRef,type,{at,scheduledFor,note=
     event.sourceConnectionId=match.id;
     if(matchWasPending){
       match.acceptedAt=eventAt;match.acceptanceMethod='inferred_from_message_sent';match.acceptanceSourceActivityId=event.id;
-      pushActivity(project,{actionGroupId,...baseActivityRefs(raw,selectedContact),owner:raw.owner||'Omar',actor:actor||raw.owner||'Omar',accountId:match.accountId,type:'connection_accepted',label:'Connection accepted',at:eventAt,
+      pushActivity(project,{actionGroupId,...baseActivityRefs(raw,selectedContact),owner:raw.owner||'Omar',actor:actor||raw.owner||'Omar',accountId:match.accountId,type:'connection_accepted',label:'Connection accepted',at:eventAt,workdayDate:workdayDate||getWorkspaceDateKey(eventAt),
         note:'Acceptance inferred from the matching LinkedIn message being sent.',sourceConfidence:'inferred',sourceConnectionId:match.id,inferredFromActivityId:event.id});
     }
     match.status='Message Sent';match.messageSentAt=eventAt;match.messageSourceActivityId=event.id;
@@ -1183,11 +1183,11 @@ const hybridMetricCount=(project,{owner='ALL',range='7D',day='',now=currentInsta
   const nowValue=now||currentInstant();
   const eventRows=activeActivitiesFor(project,'',{occurredOnly:true,nowValue})
     .filter(x=>owner==='ALL'||x.owner===owner)
-    .filter(x=>withinRange(x.at,range,day,nowValue))
+    .filter(x=>{const key=x.workdayDate||getWorkspaceDateKey(x.at);return withinRange(`${key}T12:00:00Z`,range,day,nowValue);})
     .filter(x=>x.type===eventType);
   const eventCounts=new Map();
   eventRows.forEach(x=>{
-    const key=getWorkspaceDateKey(x.at);
+    const key=x.workdayDate||getWorkspaceDateKey(x.at);
     eventCounts.set(key,(eventCounts.get(key)||0)+1);
   });
   const reports=reportedMetricByDay(project,owner);
@@ -1207,7 +1207,7 @@ const hybridMetricCount=(project,{owner='ALL',range='7D',day='',now=currentInsta
 export const getActivities=(project,companyRef='',{now=currentInstant()}={})=>activeActivitiesFor(project,companyRef,{occurredOnly:true,nowValue:now});
 export const getFilteredActivities=(project,{owner='ALL',range='7D',day='',now}={})=>{
   const nowValue=now||currentInstant();
-  return activeActivitiesFor(project,'',{occurredOnly:true,nowValue}).filter(x=>owner==='ALL'||x.owner===owner).filter(x=>withinRange(x.at,range,day,nowValue));
+  return activeActivitiesFor(project,'',{occurredOnly:true,nowValue}).filter(x=>owner==='ALL'||x.owner===owner).filter(x=>{const key=x.workdayDate||getWorkspaceDateKey(x.at);const probe=`${key}T12:00:00Z`;return withinRange(probe,range,day,nowValue);});
 };
 
 export const getDashboardMetrics=(project,filters={})=>{
@@ -1224,7 +1224,7 @@ export const getDashboardMetrics=(project,filters={})=>{
 export const getWeeklyActivity=(project,owner='ALL',nowValue=currentInstant())=>{
   const now=new Date(nowValue);const today=getWorkspaceDateKey(now);const keys=Array.from({length:7},(_,i)=>addWorkspaceDays(today,-(6-i)));
   const rows=activeActivitiesFor(project,'',{occurredOnly:true,nowValue:now}).filter(x=>owner==='ALL'||x.owner===owner).filter(x=>['connection_sent','message_sent'].includes(x.type));
-  const counts=keys.map(key=>rows.filter(x=>getWorkspaceDateKey(x.at)===key).length);const max=Math.max(1,...counts);
+  const counts=keys.map(key=>rows.filter(x=>(x.workdayDate||getWorkspaceDateKey(x.at))===key).length);const max=Math.max(1,...counts);
   const labels=keys.map(key=>{const [y,m,d]=key.split('-').map(Number);return new Intl.DateTimeFormat('en',{timeZone:'UTC',weekday:'short'}).format(new Date(Date.UTC(y,m-1,d,12))).slice(0,1);});
   return{counts,bars:counts.map(x=>Math.max(8,Math.round(x/max*100))),labels,dates:keys};
 };
@@ -1342,11 +1342,11 @@ export const getActivityAnalytics=(project,{owner='ALL',days=60,now=currentInsta
   const nowInstant=new Date(now);const count=Math.max(1,Number(days||60));const today=getWorkspaceDateKey(nowInstant);const startKey=addWorkspaceDays(today,-(count-1));
   const start=getWorkspaceDayRange(startKey)?.start;const end=getWorkspaceDayRange(addWorkspaceDays(today,1))?.start;
   const rows=activeActivitiesFor(project,'',{occurredOnly:true,nowValue:nowInstant}).filter(x=>owner==='ALL'||x.owner===owner).filter(x=>{
-    const at=new Date(x.at);return start&&end&&at>=start&&at<end;
+    const key=x.workdayDate||getWorkspaceDateKey(x.at);return key>=startKey&&key<=today;
   });
   const byDay=new Map();
   for(let i=0;i<count;i+=1){const key=addWorkspaceDays(startKey,i);byDay.set(key,{date:key,connection_sent:0,connection_accepted:0,message_sent:0,followup_sent:0,followup_scheduled:0,replied:0,meeting_booked:0,meeting_scheduled:0,meeting_rescheduled:0,meeting_done:0,total:0,events:[]});}
-  rows.forEach(event=>{const bucket=byDay.get(getWorkspaceDateKey(event.at));if(!bucket)return;if(Object.prototype.hasOwnProperty.call(bucket,event.type))bucket[event.type]+=1;bucket.total+=1;bucket.events.push(event);});
+  rows.forEach(event=>{const bucket=byDay.get(event.workdayDate||getWorkspaceDateKey(event.at));if(!bucket)return;if(Object.prototype.hasOwnProperty.call(bucket,event.type))bucket[event.type]+=1;bucket.total+=1;bucket.events.push(event);});
   const reported=reportedMetricByDay(project,owner);
   for(const [dateKey,bucket] of byDay){
     const report=reported.get(dateKey);

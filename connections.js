@@ -1,7 +1,7 @@
 import { getProject } from './projectState.js';
 import { accounts, getSelectedAccount, getConnections, getAccount, getCompanies, getHistoricalConnectionPaging } from './crmState.js';
 import { icon } from './icons.js';
-import { formatDateTime, formatDeviceDateTime, toLocalDateInputValue, getDeviceTimeValue, getDeviceTimeZone, timeParts12h, hourOptions12h, minuteOptions, periodOptions } from './date.js';
+import { formatDateTime, formatDeviceDateTime, toLocalDateInputValue, getDeviceTimeValue, getDeviceTimeZone, getWorkspaceDateKey, timeParts12h, hourOptions12h, minuteOptions, periodOptions } from './date.js';
 import { esc } from './html.js';
 import { filterOwnedRows } from './access.js';
 import { isManagerAccount } from './authState.js';
@@ -44,7 +44,8 @@ export const connectionsPage = () => {
       <div class="connection-actual-time">
         <div class="field"><label>${selectedAccount.platform==='LinkedIn'?'Connections sent date':'Message sent date'}</label><input id="connection-date" type="date" value="${toLocalDateInputValue(now)}"></div>
         <div class="field"><label>${selectedAccount.platform==='LinkedIn'?'Connections sent time':'Message sent time'}</label><div class="time-part-picker"><select id="connection-hour">${hourOptions12h(nowParts.hour)}</select><span class="time-colon">:</span><select id="connection-minute">${minuteOptions(nowParts.minute)}</select><select id="connection-period">${periodOptions(nowParts.period)}</select></div></div>
-        <small>Enter the time shown on this device (${getDeviceTimeZone()}). The CRM converts it automatically for Chicago-based reporting.</small>
+        <small>Enter the time shown on this device (${getDeviceTimeZone()}). The exact timestamp is preserved.</small>
+        <div class="field workday-field"><label>Count toward workday</label><input id="connection-workday" type="date" value="${getWorkspaceDateKey(now)}"><small>Use the previous day when you are finishing that work after midnight.</small></div>
       </div>
       <div class="field connection-known-contact-field">
         <label>Existing CRM contact <span class="cell-muted">(recommended when already saved)</span></label>
