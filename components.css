@@ -126,8 +126,8 @@ tr:hover td { background: rgba(255,255,255,.016); }
 .master-summary > div:last-child { border-right:0; }
 .master-summary strong { display:block; margin-top:8px; font-size:15px; }
 .master-tools { margin-top:4px; }
-.toast { position:fixed; right:24px; bottom:24px; z-index:50; background:#f3f3ef; color:#090909; border-radius:10px; padding:10px 14px; font-size:11px; font-weight:700; transform:translateY(20px); opacity:0; pointer-events:none; transition:.2s ease; }
-.toast.show { transform:none; opacity:1; }
+.toast { position:fixed; top:18px; left:50%; right:auto; bottom:auto; z-index:1000; max-width:min(560px,calc(100vw - 28px)); background:#f3f3ef; color:#090909; border-radius:10px; padding:11px 15px; font-size:11px; font-weight:700; text-align:center; box-shadow:0 10px 32px rgba(0,0,0,.35); transform:translate(-50%,-16px); opacity:0; pointer-events:none; transition:.2s ease; }
+.toast.show { transform:translate(-50%,0); opacity:1; }
 .visually-hidden { position:absolute!important; width:1px!important; height:1px!important; padding:0!important; margin:-1px!important; overflow:hidden!important; clip:rect(0,0,0,0)!important; white-space:nowrap!important; border:0!important; }
 .report-owner-card { display:flex; align-items:center; gap:12px; padding:13px; border:1px solid var(--line); border-radius:12px; background:#090909; }
 .owner-avatar { width:40px; height:40px; display:grid; place-items:center; border-radius:50%; background:#f3f3ef; color:#090909; font-size:11px; font-weight:800; }

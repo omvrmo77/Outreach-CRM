@@ -3,7 +3,7 @@ import { getManagerFilters } from './managerState.js';
 import { rangeLabels } from './uiConfig.js';
 import { metricCard } from './metricCard.js';
 import { icon } from './icons.js';
-import { getActiveOwners, getDashboardMetrics, getWeeklyActivity, getFilteredActivities, getCompanies, getAccount, getActivityDetail } from './crmState.js';
+import { getActiveOwners, getDashboardMetrics, getWeeklyActivity, getFilteredActivities, getCompanies, getAccount, getActivityDetail } from './crmState.js?v=20260917-connanalytics1';
 import { formatDateTime, formatCompactDateTime } from './date.js';
 import { esc } from './html.js';
 import { getCurrentUser, canManage, isManagerAccount } from './authState.js';

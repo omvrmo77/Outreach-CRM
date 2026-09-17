@@ -1,15 +1,16 @@
 import { backendConfig } from './backendConfig.js';
-import { backendOperations } from './crmApi.js';
+import { backendOperations } from './crmApi.js?v=20260917-connanalytics1';
 import { getAccessToken, getCurrentUser } from './authState.js';
 import {
   hydrateBackendState,
   mergeBackendCompanyBundle,
   mergeBackendConnections,
+  mergeBackendEvents,
   mergeBackendHistoricalConnections,
   getRelationshipId,
   getCompany,
   getActivities
-} from './crmState.js';
+} from './crmState.js?v=20260917-connanalytics1';
 
 export const isBackendEnabled=()=>Boolean(backendConfig.enabled);
 
@@ -44,6 +45,15 @@ const refreshConnectionsByIds=async(project,ids=[])=>{
   return rows;
 };
 
+const refreshEventsByConnectionIds=async(project,ids=[])=>{
+  const unique=[...new Set(ids.filter(Boolean))];
+  if(!unique.length) return [];
+  const token=await tokenOrThrow();
+  const rows=await backendOperations.eventsByConnectionIds(token,{productCode:project,ids:unique});
+  mergeBackendEvents(project,Array.isArray(rows)?rows:[]);
+  return rows;
+};
+
 export const backendLoadHistoricalConnections=async(project,{offset=0,limit=50}={})=>{
   const token=await tokenOrThrow();
   const payload=await backendOperations.historicalConnectionsPage(token,{productCode:project,offset,limit});
@@ -60,7 +70,10 @@ export const backendAddConnection=async(project,payload)=>{
   const row=Array.isArray(rows)?rows[0]:null;
   if(!row) return {ok:false,reason:'backend-error'};
   if(row.status!=='added') return {ok:false,reason:row.status,...row};
-  if(row.connection_id) await refreshConnectionsByIds(project,[row.connection_id]);
+  if(row.connection_id){
+    await refreshConnectionsByIds(project,[row.connection_id]);
+    await refreshEventsByConnectionIds(project,[row.connection_id]);
+  }
   return {ok:true,connectionId:row.connection_id,...row};
 };
 
@@ -69,7 +82,10 @@ export const backendAddConnectionsBulk=async(project,{items,accountId,sentAt,wor
   const rows=await backendOperations.addConnectionsBatch(token,{productCode:project,accountId,sentAt,workdayDate,items});
   const list=Array.isArray(rows)?rows:[];
   const addedIds=list.filter(x=>x.status==='added').map(x=>x.connection_id).filter(Boolean);
-  if(addedIds.length) await refreshConnectionsByIds(project,addedIds);
+  if(addedIds.length){
+    await refreshConnectionsByIds(project,addedIds);
+    await refreshEventsByConnectionIds(project,addedIds);
+  }
   return {
     added:list.filter(x=>x.status==='added').length,
     duplicates:list.filter(x=>x.status==='duplicate').length,

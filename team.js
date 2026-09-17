@@ -1,6 +1,6 @@
 import { getProject } from './projectState.js';
 import { getTeamComparison } from './managementInsights.js';
-import { getBackendProfiles } from './crmState.js';
+import { getBackendProfiles } from './crmState.js?v=20260917-toastconn1';
 import { getCurrentUser } from './authState.js';
 import { icon } from './icons.js';
 import { esc } from './html.js';

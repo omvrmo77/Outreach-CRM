@@ -64,6 +64,7 @@ export const backendOperations={
   state:(token,{productCode})=>crmRpc('crm_frontend_state_fast_v3',{p_product_code:productCode},token),
   companyBundle:(token,{productCode,companyId})=>crmRpc('crm_frontend_company_bundle_v2',{p_product_code:productCode,p_company_id:companyId},token),
   connectionsByIds:(token,{productCode,ids})=>crmRpc('crm_frontend_connections_by_ids',{p_product_code:productCode,p_ids:ids},token),
+  eventsByConnectionIds:(token,{productCode,ids})=>crmRpc('crm_frontend_events_by_connection_ids',{p_product_code:productCode,p_ids:ids},token),
   historicalConnectionsPage:(token,{productCode,offset=0,limit=50})=>crmRpc('crm_frontend_historical_connections_page',{p_product_code:productCode,p_offset:offset,p_limit:limit},token),
   addConnectionsBatch:(token,{productCode,accountId,items,sentAt,workdayDate=null})=>crmRpc('crm_frontend_add_connections_batch_v3',{p_product_code:productCode,p_outreach_account_id:accountId,p_items:items,p_sent_at:sentAt||null,p_workday_date:workdayDate||null},token),
   addRelationship:(token,{productCode,accountId,payload,companyId=null,contactId=null,matchedConnectionId=null,forceNewContact=false,messageText,occurredAt,workdayDate=null})=>crmRpc('crm_frontend_upsert_relationship_v3',{p_product_code:productCode,p_outreach_account_id:accountId,p_payload:payload,p_company_id:companyId||null,p_contact_id:contactId||null,p_matched_connection_id:matchedConnectionId||null,p_force_new_contact:Boolean(forceNewContact),p_message_text:messageText,p_occurred_at:occurredAt,p_workday_date:workdayDate||null},token),

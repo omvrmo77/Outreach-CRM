@@ -373,7 +373,7 @@ export const hydrateBackendState = (project,snapshot={}) => {
       id:row.id,name:ct.full_name||row.contact_name_snapshot||'—',contactRole:ct.title||'',company:c.name||row.company_name_snapshot||'—',companyId:row.company_id||'',contactId:row.contact_id||'',
       provisionalContact:!row.contact_id,owner:historicalOnly?'':backendOwnerName(row.owner_user_id,row.historical_owner_name,profileMap),ownerId:row.owner_user_id||'',accountId:historicalOnly?'':(row.outreach_account_id||''),
       status:historicalOnly?'Historical':(row.status||'Pending'),sentAt:historicalOnly?(row.sent_at||null):(row.sent_at||row.created_at),acceptedAt:row.accepted_at||null,messageSentAt:row.message_sent_at||null,
-      acceptanceMethod:row.acceptance_method||'',historicalOnly,local:false,deletedAt:null
+      acceptanceMethod:row.acceptance_method||'',createdAt:row.created_at||row.sent_at||'',historicalOnly,local:false,deletedAt:null
     };
   });
 
@@ -454,6 +454,7 @@ const mapBackendConnectionRow = (project,row) => {
     acceptedAt:row.accepted_at||null,
     messageSentAt:row.message_sent_at||null,
     acceptanceMethod:row.acceptance_method||'',
+    createdAt:row.created_at||row.sent_at||'',
     historicalOnly,
     local:false,
     deletedAt:null
@@ -473,6 +474,44 @@ export const mergeBackendConnections = (project,rows=[]) => {
     }
   });
   state.connections[project]=[...byId.values()];
+  return rows.length;
+};
+
+const mapBackendEventRow = (project,row) => {
+  const profileMap=new Map(backendProfiles.map(p=>[p.id,p]));
+  const company=getRawCompany(project,row.company_id||'');
+  const contact=company?.contacts?.find(c=>c.id===row.contact_id)||null;
+  const metadata=row.metadata||{};
+  const type=frontendEventType(row.event_type);
+  const eventLabel={connection_sent:'Connection sent',connection_accepted:'Connection accepted',company_added:'Company added',contact_added:'Contact added',message_sent:'Message sent',followup_scheduled:'Follow-up scheduled',followup_sent:'Follow-up sent',replied:'They replied',meeting_booked:'Meeting booked',meeting_scheduled:'Meeting scheduled',meeting_rescheduled:'Meeting rescheduled',meeting_done:'Meeting done',note_added:'Note added'};
+  let detail=row.note||'';
+  if(['message_sent','followup_sent'].includes(type)) detail=row.message_text||row.note||'';
+  else if(type==='replied') detail=row.reply_text||row.note||'';
+  return {
+    id:row.id,recordedAt:row.recorded_at||row.occurred_at,deletedAt:null,actionGroupId:row.action_group_id||'',
+    companyId:row.company_id||'',company:company?.company||row.company_name_snapshot||'',
+    contactId:row.contact_id||'',contact:contact?.name||row.contact_name_snapshot||'',contactRole:contact?.role||row.contact_title_snapshot||'',
+    owner:backendOwnerName(row.relationship_owner_user_id,row.relationship_owner_snapshot,profileMap),ownerId:row.relationship_owner_user_id||'',
+    actor:row.actor_name_snapshot||backendOwnerName(row.actor_user_id,'',profileMap),actorId:row.actor_user_id||'',accountId:row.outreach_account_id||'',
+    type,label:eventLabel[type]||type,at:row.occurred_at,workdayDate:row.workday_date||metadata.workday_date||'',
+    scheduledFor:row.scheduled_for||row.follow_up_due_at||null,previousScheduledFor:row.previous_scheduled_for||null,
+    detail,detailLabel:metadata.detail_label||'',secondaryDetail:metadata.secondary_detail||'',secondaryLabel:metadata.secondary_label||'',note:row.note||'',
+    meetingId:row.meeting_id||'',followupId:row.followup_id||'',sourceConnectionId:row.connection_id||'',sourceConfidence:row.source_confidence||'',
+    inferredFromActivityId:metadata.inferred_from_event_id||'',reportOnly:Boolean(metadata.report_only_historical),metadata
+  };
+};
+
+export const mergeBackendEvents = (project,rows=[]) => {
+  if(!PROJECTS.includes(project)||!Array.isArray(rows)) return 0;
+  const current=state.activities[project]||[];
+  const byId=new Map(current.map(x=>[x.id,x]));
+  rows.forEach(row=>{
+    if(!row?.id) return;
+    byId.set(row.id,mapBackendEventRow(project,row));
+  });
+  state.activities[project]=[...byId.values()];
+  assignOperationalIds(state.activities[project]);
+  repairOperationalContactConsistency(state.activities[project]);
   return rows.length;
 };
 
@@ -599,6 +638,8 @@ export const getConnections = (project, nowValue=currentInstant()) => [...(state
   .filter(Boolean)
   .sort((a,b)=>{
     if(Boolean(a.historicalOnly)!==Boolean(b.historicalOnly)) return a.historicalOnly?1:-1;
+    const addedDiff=new Date(b.createdAt||b.sentAt||0)-new Date(a.createdAt||a.sentAt||0);
+    if(addedDiff) return addedDiff;
     return new Date(b.sentAt||0)-new Date(a.sentAt||0);
   });
 
@@ -715,7 +756,7 @@ export const addConnection = (project,{name,company,companyId='',contactId='',ac
   const row={
     id:createId('conn'),name:cleanName,contactRole:linkedContact?.role||'',company:companyRaw?.company||cleanCompany,companyId:companyRaw?.id||'',contactId:linkedContact?.id||'',
     provisionalContact:!linkedContact,owner,accountId:account.id,status:account.platform==='X'?'Message Sent':'Pending',sentAt:occurredAt,acceptedAt:null,
-    messageSentAt:account.platform==='X'?occurredAt:null,local:true,deletedAt:null
+    messageSentAt:account.platform==='X'?occurredAt:null,createdAt:now,local:true,deletedAt:null
   };
   state.connections[project].push(row);
 
@@ -1345,8 +1386,18 @@ export const getActivityAnalytics=(project,{owner='ALL',days=60,now=currentInsta
     const key=x.workdayDate||getWorkspaceDateKey(x.at);return key>=startKey&&key<=today;
   });
   const byDay=new Map();
-  for(let i=0;i<count;i+=1){const key=addWorkspaceDays(startKey,i);byDay.set(key,{date:key,connection_sent:0,connection_accepted:0,message_sent:0,followup_sent:0,followup_scheduled:0,replied:0,meeting_booked:0,meeting_scheduled:0,meeting_rescheduled:0,meeting_done:0,total:0,events:[]});}
-  rows.forEach(event=>{const bucket=byDay.get(event.workdayDate||getWorkspaceDateKey(event.at));if(!bucket)return;if(Object.prototype.hasOwnProperty.call(bucket,event.type))bucket[event.type]+=1;bucket.total+=1;bucket.events.push(event);});
+  for(let i=0;i<count;i+=1){const key=addWorkspaceDays(startKey,i);byDay.set(key,{date:key,connection_sent:0,connection_accepted:0,connection_pending_current:0,connection_accepted_current:0,message_sent:0,followup_sent:0,followup_scheduled:0,replied:0,meeting_booked:0,meeting_scheduled:0,meeting_rescheduled:0,meeting_done:0,total:0,events:[]});}
+  const connectionById=new Map((state.connections[project]||[]).filter(x=>!x.deletedAt).map(x=>[x.id,x]));
+  rows.forEach(event=>{
+    const bucket=byDay.get(event.workdayDate||getWorkspaceDateKey(event.at));if(!bucket)return;
+    if(Object.prototype.hasOwnProperty.call(bucket,event.type))bucket[event.type]+=1;
+    if(event.type==='connection_sent'&&event.sourceConnectionId){
+      const conn=connectionById.get(event.sourceConnectionId);
+      if(conn?.status==='Pending') bucket.connection_pending_current+=1;
+      else if(['Accepted','Message Sent'].includes(conn?.status)) bucket.connection_accepted_current+=1;
+    }
+    bucket.total+=1;bucket.events.push(event);
+  });
   const reported=reportedMetricByDay(project,owner);
   for(const [dateKey,bucket] of byDay){
     const report=reported.get(dateKey);

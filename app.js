@@ -1,4 +1,4 @@
-import { getRoute, renderRoute } from './router.js?v=20260917-companyfix1';
+import { getRoute, renderRoute } from './router.js?v=20260917-connanalytics1';
 import { sidebar } from './sidebar.js';
 import { topbar } from './topbar.js';
 import { loader } from './loader.js';
@@ -10,14 +10,14 @@ import {
   addConnection, addConnectionsBulk, setSelectedAccount, updateConnectionStatus, findConnection, getAccount, getConnections, getSelectedAccount,
   addCompany, getCompany, getActivities, recordCompanyAction, deleteLocalCompany, deleteActivity, updateActivity, undoLastAction, getActivityAnalytics, exportPrototypeSnapshot,
   getNoRepeatCompanies, canonicalizeIdentity, getCompanyContacts, getMeetingRecords, getFollowupRecords, getHistoricalConnectionPaging
-} from './crmState.js';
+} from './crmState.js?v=20260917-connanalytics1';
 import { esc } from './html.js';
-import { renderAnalyticsDayPanel } from './activityAnalytics.js';
+import { renderAnalyticsDayPanel } from './activityAnalytics.js?v=20260917-connanalytics1';
 import { activityActions } from './activityActions.js';
 import { combine12hTime, toLocalDateInputValue, getDeviceTimeValue, getDeviceDateKey, getWorkspaceDateKey, formatWorkspaceDateKey, formatDate, formatDateTime, timeParts12h, localDateTimeToDate, addWorkspaceDays, validateLocalDateTime } from './date.js';
 import { safeDecodeRouteComponent } from './route.js';
 import { parseBatchCandidates, batchCheckSummary } from './batchCheck.js';
-import { isBackendEnabled, syncBackendState, backendAddConnection, backendAddConnectionsBulk, backendAddCompany, backendRecordCompanyAction, backendUpdateActivity, backendDeleteActivity, backendUndoLastAction, backendArchiveCompany, backendSetProfileAccess, backendInviteMember, backendCheckBatch, backendLoadHistoricalConnections } from './backendSync.js?v=20260917-workday1';
+import { isBackendEnabled, syncBackendState, backendAddConnection, backendAddConnectionsBulk, backendAddCompany, backendRecordCompanyAction, backendUpdateActivity, backendDeleteActivity, backendUndoLastAction, backendArchiveCompany, backendSetProfileAccess, backendInviteMember, backendCheckBatch, backendLoadHistoricalConnections } from './backendSync.js?v=20260917-connanalytics1';
 
 const app = document.getElementById('app');
 let launching = true;

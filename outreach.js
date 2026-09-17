@@ -1,5 +1,5 @@
 import { getProject } from './projectState.js';
-import { getOutreachRows, getAccount, getActiveOwners } from './crmState.js';
+import { getOutreachRows, getAccount, getActiveOwners } from './crmState.js?v=20260917-toastconn1';
 import { formatDateTime } from './date.js';
 import { icon } from './icons.js';
 import { esc } from './html.js';

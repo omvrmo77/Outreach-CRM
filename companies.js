@@ -1,5 +1,5 @@
 import { getProject } from './projectState.js';
-import { getCompanies } from './crmState.js';
+import { getCompanies } from './crmState.js?v=20260917-toastconn1';
 import { companiesTable } from './dataTable.js';
 import { icon } from './icons.js';
 import { filterOwnedRows, isPersonalOutreachView } from './access.js';

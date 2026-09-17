@@ -1,6 +1,6 @@
 import { getProject } from './projectState.js';
 import { getManagerFilters } from './managerState.js';
-import { getActiveOwners, getActivityAnalytics, getAccount, getActivityDetail } from './crmState.js';
+import { getActiveOwners, getActivityAnalytics, getAccount, getActivityDetail } from './crmState.js?v=20260917-connanalytics1';
 import { icon } from './icons.js';
 import { formatDateTime, formatWorkspaceDateKey, formatWorkspaceWeekday } from './date.js';
 import { esc } from './html.js';
@@ -32,7 +32,7 @@ export const renderAnalyticsDayPanel = (project, owner, days, date) => {
   return `<div class="analytics-day-head">
       <div><span class="manager-label">Selected day</span><h3>${esc(fullDay(day.date))}</h3><small class="selected-day-total">${day.reportedDaily?'Reported daily totals applied · reconstructed detail may differ':`${events.length} ${events.length===1?'activity':'activities'} recorded`}</small></div>
       <div class="day-score-row">
-        <span><b>${day.replied}</b> replies</span><span><b>${day.meeting_booked}</b> meetings</span><span><b>${day.message_sent}</b> messages</span><span><b>${day.connection_sent}</b> connections</span>
+        <span><b>${day.replied}</b> replies</span><span><b>${day.meeting_booked}</b> meetings</span><span><b>${day.message_sent}</b> messages</span><span><b>${day.connection_sent}</b> connections sent</span><span><b>${day.connection_pending_current}</b> pending</span><span><b>${day.connection_accepted_current}</b> accepted now</span>
       </div>
     </div>
     <div class="selected-day-scroll" aria-label="Selected day activity">

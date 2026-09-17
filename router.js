@@ -2,7 +2,7 @@ import { homePage } from './home.js';
 import { dashboardPage } from './dashboard.js';
 import { companiesPage } from './companies.js';
 import { outreachPage } from './outreach.js';
-import { connectionsPage } from './connections.js';
+import { connectionsPage } from './connections.js?v=20260917-toastconn1';
 import { followupsPage } from './followups.js';
 import { meetingsPage } from './meetings.js';
 import { reportsPage } from './reports.js';
@@ -12,7 +12,7 @@ import { companyProfilePage } from './companyProfile.js?v=20260917-companyfix1';
 import { loginPage } from './login.js';
 import { masterListPage } from './masterList.js';
 import { addCompanyPage } from './addCompany.js';
-import { activityAnalyticsPage } from './activityAnalytics.js';
+import { activityAnalyticsPage } from './activityAnalytics.js?v=20260917-connanalytics1';
 import { profilePage } from './profile.js';
 import { safeDecodeRouteComponent } from './route.js';
 

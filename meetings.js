@@ -1,5 +1,5 @@
 import { getProject } from './projectState.js';
-import { getMeetingRecords, getAccount } from './crmState.js';
+import { getMeetingRecords, getAccount } from './crmState.js?v=20260917-toastconn1';
 import { formatDateTime } from './date.js';
 import { esc } from './html.js';
 import { currentOwner } from './access.js';

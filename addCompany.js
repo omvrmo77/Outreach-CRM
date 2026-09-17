@@ -1,6 +1,6 @@
 import { getProject } from './projectState.js';
 import { icon } from './icons.js';
-import { getAccounts, getSelectedAccount } from './crmState.js';
+import { getAccounts, getSelectedAccount } from './crmState.js?v=20260917-toastconn1';
 import { toLocalDateInputValue, getDeviceTimeValue, getDeviceTimeZone, getWorkspaceDateKey, formatWorkspaceDateKey, timeParts12h, hourOptions12h, minuteOptions, periodOptions } from './date.js';
 
 export const addCompanyPage = () => {
