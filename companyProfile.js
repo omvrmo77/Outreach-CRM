@@ -1,5 +1,5 @@
 import { getProject } from './projectState.js';
-import { getCompany, getActivities, getAccount, getAccounts, getChangeHistory, getCompanyContacts } from './crmState.js?v=20260917-multicontact1';
+import { getCompany, getActivities, getAccount, getAccounts, getChangeHistory, getCompanyContacts } from './crmState.js?v=20260918-registry1';
 import { icon } from './icons.js';
 import { formatDateTime, formatDeviceDateTime, getDeviceTimeValue, getDeviceDateKey, getDeviceTimeZone, getWorkspaceDateKey, formatWorkspaceDateKey, addWorkspaceDays, timeParts12h, hourOptions12h, minuteOptions, periodOptions } from './date.js?v=20260918-gmt4-1';
 import { esc } from './html.js';

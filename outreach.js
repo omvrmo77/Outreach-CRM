@@ -1,5 +1,5 @@
 import { getProject } from './projectState.js';
-import { getOutreachRows, getAccount, getActiveOwners } from './crmState.js?v=20260917-multicontact1';
+import { getOutreachRows, getAccount, getActiveOwners } from './crmState.js?v=20260918-registry1';
 import { formatDateTime } from './date.js?v=20260918-gmt4-1';
 import { icon } from './icons.js';
 import { esc } from './html.js';

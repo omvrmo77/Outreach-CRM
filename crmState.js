@@ -350,7 +350,7 @@ export const hydrateBackendState = (project,snapshot={}) => {
         angle:rel.potential_lfg_angle||rel.product_angle||'',personality:ct.personality||'',fundingStatus:rel.funding_status||'',website:c.website||'',
         targetCategory:rel.target_category||'',priority:rel.priority||'',recommendedTiming:rel.recommended_timing||'',bestPlatform:rel.best_platform||'',
         primaryRoute:rel.primary_route||'',fallbackRoute:rel.fallback_route||'',whyThisContact:rel.why_this_contact||'',desiredOutcome:rel.desired_outcome||'',
-        telegramUsername:ct.telegram_username||'',groupChat:rel.group_chat||'',notes:rel.notes||'',addedAt:rel.created_at||'',nextStep:rel.next_step||'Review relationship',
+        telegramUsername:ct.telegram_username||'',groupChat:rel.group_chat||'',notes:rel.notes||'',addedAt:c.registry_added_at||rel.created_at||c.created_at||'',registryAddedAt:c.registry_added_at||'',nextStep:rel.next_step||'Review relationship',
         status:rel.status||'Company Added',local:false,provisional:Boolean(rel.provisional ?? rel.raw_source?.provisional),deletedAt:null,relationshipIds:[]
       };
       companyMap.set(rel.company_id,company);
@@ -364,6 +364,46 @@ export const hydrateBackendState = (project,snapshot={}) => {
     }
     if(!company.primaryContactId) company.primaryContactId=rel.contact_id||'';
   }
+
+  // Permanent registry: companies remain visible even when they do not currently
+  // have an outreach relationship (for example, connection-only companies).
+  const connectionRowsByCompany=new Map();
+  connectionRows.forEach(row=>{
+    if(!row?.company_id) return;
+    if(!connectionRowsByCompany.has(row.company_id)) connectionRowsByCompany.set(row.company_id,[]);
+    connectionRowsByCompany.get(row.company_id).push(row);
+  });
+  const contactRowsByCompany=new Map();
+  contactRows.forEach(row=>{
+    if(!row?.company_id) return;
+    if(!contactRowsByCompany.has(row.company_id)) contactRowsByCompany.set(row.company_id,[]);
+    contactRowsByCompany.get(row.company_id).push(row);
+  });
+
+  for(const c of companyRows){
+    if(companyMap.has(c.id)) continue;
+    const companyConnections=[...(connectionRowsByCompany.get(c.id)||[])].sort((a,b)=>new Date(b.created_at||b.sent_at||0)-new Date(a.created_at||a.sent_at||0));
+    const latestConnection=companyConnections[0]||{};
+    const companyContacts=(contactRowsByCompany.get(c.id)||[]).map(ct=>{
+      const related=companyConnections.find(x=>x.contact_id===ct.id)||{};
+      return {
+        id:ct.id,name:ct.full_name||'—',role:ct.title||'',accountId:related.outreach_account_id||'',
+        createdAt:ct.created_at||related.created_at||c.registry_added_at||'',
+        relationshipId:'',relationshipIds:[],
+        owner:backendOwnerName(related.owner_user_id,related.historical_owner_name,profileMap),
+        ownerId:related.owner_user_id||''
+      };
+    });
+    const owner=backendOwnerName(latestConnection.owner_user_id,latestConnection.historical_owner_name,profileMap);
+    companyMap.set(c.id,{
+      id:c.id,company:c.name||'Unknown company',contacts:companyContacts,primaryContactId:companyContacts[0]?.id||'',owner,
+      agenda:'—',projectSummary:'',whyInteresting:'',angle:'',personality:'',fundingStatus:'',website:c.website||'',
+      targetCategory:'',priority:'',recommendedTiming:'',bestPlatform:'',primaryRoute:'',fallbackRoute:'',whyThisContact:'',desiredOutcome:'',
+      telegramUsername:'',groupChat:'',notes:c.notes||'',addedAt:c.registry_added_at||c.created_at||'',registryAddedAt:c.registry_added_at||'',
+      nextStep:'Complete outreach details',status:latestConnection.status||'Connection Added',local:false,provisional:true,deletedAt:null,relationshipIds:[]
+    });
+  }
+
   state.companies[project]=[...companyMap.values()];
 
   state.connections[project]=connectionRows.map(row=>{
@@ -563,6 +603,29 @@ export const mergeBackendCompanyBundle = (project,companyId,bundle={}) => {
       });
     }
     if(!company.primaryContactId) company.primaryContactId=rel.contact_id||'';
+  }
+
+  if(!company && c?.id){
+    const companyConnections=[...connectionRows].sort((a,b)=>new Date(b.created_at||b.sent_at||0)-new Date(a.created_at||a.sent_at||0));
+    const latestConnection=companyConnections[0]||{};
+    const contactList=contactRows.map(ct=>{
+      const related=companyConnections.find(x=>x.contact_id===ct.id)||{};
+      return {
+        id:ct.id,name:ct.full_name||'—',role:ct.title||'',accountId:related.outreach_account_id||'',
+        createdAt:ct.created_at||related.created_at||c.registry_added_at||'',
+        relationshipId:'',relationshipIds:[],
+        owner:backendOwnerName(related.owner_user_id,related.historical_owner_name,profileMap),
+        ownerId:related.owner_user_id||''
+      };
+    });
+    company={
+      id:companyId,company:c.name||'Unknown company',contacts:contactList,primaryContactId:contactList[0]?.id||'',
+      owner:backendOwnerName(latestConnection.owner_user_id,latestConnection.historical_owner_name,profileMap),
+      agenda:'—',projectSummary:'',whyInteresting:'',angle:'',personality:'',fundingStatus:'',website:c.website||'',
+      targetCategory:'',priority:'',recommendedTiming:'',bestPlatform:'',primaryRoute:'',fallbackRoute:'',whyThisContact:'',desiredOutcome:'',
+      telegramUsername:'',groupChat:'',notes:c.notes||'',addedAt:c.registry_added_at||c.created_at||'',registryAddedAt:c.registry_added_at||'',
+      nextStep:'Complete outreach details',status:latestConnection.status||'Connection Added',local:false,provisional:true,deletedAt:null,relationshipIds:[]
+    };
   }
 
   state.companies[project]=(state.companies[project]||[]).filter(x=>x.id!==companyId);

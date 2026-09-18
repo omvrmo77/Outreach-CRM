@@ -1,4 +1,4 @@
-import { getRoute, renderRoute } from './router.js?v=20260918-gmt4-1';
+import { getRoute, renderRoute } from './router.js?v=20260918-registry1';
 import { sidebar } from './sidebar.js';
 import { topbar } from './topbar.js';
 import { loader } from './loader.js';
@@ -10,7 +10,7 @@ import {
   addConnection, addConnectionsBulk, setSelectedAccount, updateConnectionStatus, findConnection, getAccount, getConnections, getSelectedAccount,
   addCompany, getCompany, getActivities, recordCompanyAction, deleteLocalCompany, deleteActivity, updateActivity, undoLastAction, getActivityAnalytics, exportPrototypeSnapshot,
   getNoRepeatCompanies, canonicalizeIdentity, getCompanyContacts, getMeetingRecords, getFollowupRecords, getHistoricalConnectionPaging
-} from './crmState.js?v=20260918-gmt4-1';
+} from './crmState.js?v=20260918-registry1';
 import { esc } from './html.js';
 import { renderAnalyticsDayPanel } from './activityAnalytics.js?v=20260917-connanalytics1';
 import { activityActions } from './activityActions.js';

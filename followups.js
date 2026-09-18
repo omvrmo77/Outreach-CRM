@@ -1,5 +1,5 @@
 import { getProject } from './projectState.js';
-import { getFollowupRecords } from './crmState.js?v=20260917-multicontact1';
+import { getFollowupRecords } from './crmState.js?v=20260918-registry1';
 import { esc } from './html.js';
 import { currentOwner } from './access.js';
 import { isManagerAccount } from './authState.js';

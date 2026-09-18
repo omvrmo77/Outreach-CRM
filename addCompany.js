@@ -1,6 +1,6 @@
 import { getProject } from './projectState.js';
 import { icon } from './icons.js';
-import { getAccounts, getSelectedAccount } from './crmState.js?v=20260917-multicontact1';
+import { getAccounts, getSelectedAccount } from './crmState.js?v=20260918-registry1';
 import { toLocalDateInputValue, getDeviceTimeValue, getDeviceTimeZone, getWorkspaceDateKey, formatWorkspaceDateKey, timeParts12h, hourOptions12h, minuteOptions, periodOptions } from './date.js?v=20260918-gmt4-1';
 
 export const addCompanyPage = () => {

@@ -1,4 +1,4 @@
-import { getAccount } from './crmState.js?v=20260917-multicontact1';
+import { getAccount } from './crmState.js?v=20260918-registry1';
 import { esc } from './html.js';
 
 export const statusClass = (s='') => {
