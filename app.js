@@ -348,7 +348,17 @@ const bindAddCompany = () => {
   const connectionForDraft=(existing,contact,company,role='')=>{
     if(!company||!contact) return null;
     const exact=exactKnownContactForDraft(existing,contact,role);
-    if(exact) return findConnection(project,contact,existing.id,currentOwner(),{contactId:exact.id});
+    if(exact){
+      // Stable contact ID is the strongest identity signal. When this contact came from an
+      // existing connection, use that connection's saved owner/account instead of guessing
+      // from the current UI user. This prevents a real pending/accepted connection from
+      // being mistaken for a different same-name person.
+      const ownerHint=exact.owner||currentOwner();
+      const accountHint=exact.accountId||'';
+      const strict=findConnection(project,contact,existing.id,ownerHint,{contactId:exact.id,...(accountHint?{accountId:accountHint}:{})});
+      if(strict) return strict;
+      return findConnection(project,contact,existing.id,ownerHint,{contactId:exact.id});
+    }
     const sameName=existing?getCompanyContacts(existing).filter(c=>canonicalizeIdentity(c.name)===canonicalizeIdentity(contact)):[];
     if(sameName.length) return null;
     return findConnection(project,contact,existing?.id||company,currentOwner());
@@ -384,7 +394,9 @@ const bindAddCompany = () => {
     const companyContacts=existing?getCompanyContacts(existing):[];
     const sameNameContacts=companyContacts.filter(c=>canonicalizeIdentity(c.name)===canonicalizeIdentity(contact));
     const sameContact=sameNameContacts.length>0;
-    const sameExactContact=sameNameContacts.some(c=>canonicalizeIdentity(c.role||'')===canonicalizeIdentity(role));
+    // Only call this an exact saved-contact match when it resolves to one stable contact ID.
+    // Multiple same-name/same-role contacts remain ambiguous and still require confirmation.
+    const sameExactContact=Boolean(exactKnownContactForDraft(existing,contact,role));
     const sameNameConfirm=document.getElementById('same-name-contact-confirm');
     const forceNewContact=document.getElementById('force-new-contact');
     sameNameConfirm?.classList.add('hidden');
@@ -409,15 +421,22 @@ const bindAddCompany = () => {
       return;
     }
 
-    if(existing){
+    if(existing && sameExactContact && match){
+      const account=getAccount(match.accountId);
+      banner.classList.add('success');
+      banner.innerHTML=`<span>✓</span><span>Exact connection match found for <strong>${esc(contact)} · ${esc(company)}</strong> via ${esc(account.label)}. This is the same saved contact. Saving the first LinkedIn message will attach it to this connection, infer acceptance, and will not create a duplicate contact.</span>`;
+      save.dataset.baseAllowed=company&&contact?'true':'false';
+      save.disabled=!(company&&contact&&incomingMessage);
+      save.textContent='Add message + mark accepted';
+    } else if(existing){
       if(sameExactContact){
         banner.classList.add('danger');
-        banner.innerHTML=`${esc('⚠')} <span><strong>${esc(company)}</strong> already has a contact displayed as <strong>${esc(contact)}</strong>${role?` · ${esc(role)}`:''}. If this is genuinely a different person, confirm below and the CRM will create a separate contact ID instead of merging them.</span>`;
+        banner.innerHTML=`${esc('⚠')} <span><strong>${esc(company)}</strong> already has a contact displayed as <strong>${esc(contact)}</strong>${role?` · ${esc(role)}`:''}, but there is no matching connection tying this outreach to that saved contact. Only confirm below if this is genuinely a different person.</span>`;
         sameNameConfirm?.classList.remove('hidden');
         save.dataset.baseAllowed=company&&contact?'true':'false'; save.disabled=true; save.textContent='Add separate contact + message';
       } else {
         banner.classList.add('success');
-        banner.innerHTML=`<span>✓</span><span><strong>${esc(company)}</strong> already exists. This will add <strong>${esc(contact||'a new contact')}</strong>${sameContact?' as a different same-name person':''} as a separate contact with its own stable ID, title/account and activity history${match?' and match the pending connection':''}.</span>`;
+        banner.innerHTML=`<span>✓</span><span><strong>${esc(company)}</strong> already exists. This will add <strong>${esc(contact||'a new contact')}</strong>${sameContact?' as a different same-name person':''} as a separate contact with its own stable ID, title/account and activity history${match?' and match the connection':''}.</span>`;
         save.dataset.baseAllowed=company&&contact?'true':'false'; save.disabled=!(company&&contact&&incomingMessage); save.textContent='Add contact + message';
       }
     } else if(match){
