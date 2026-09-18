@@ -1,4 +1,4 @@
-import { backendConfig } from './backendConfig.js';
+import { backendConfig } from './backendConfig.js?v=20260918-gmt4-1';
 import { backendOperations } from './crmApi.js?v=20260917-connanalytics1';
 import { getAccessToken, getCurrentUser } from './authState.js';
 import {
@@ -10,7 +10,7 @@ import {
   getRelationshipId,
   getCompany,
   getActivities
-} from './crmState.js?v=20260917-multicontact1';
+} from './crmState.js?v=20260918-gmt4-1';
 
 export const isBackendEnabled=()=>Boolean(backendConfig.enabled);
 

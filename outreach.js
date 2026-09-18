@@ -1,6 +1,6 @@
 import { getProject } from './projectState.js';
 import { getOutreachRows, getAccount, getActiveOwners } from './crmState.js?v=20260917-multicontact1';
-import { formatDateTime } from './date.js';
+import { formatDateTime } from './date.js?v=20260918-gmt4-1';
 import { icon } from './icons.js';
 import { esc } from './html.js';
 import { filterOwnedRows, visibleOwnerOptions, isPersonalOutreachView } from './access.js';

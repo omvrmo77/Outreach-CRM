@@ -2,7 +2,7 @@ import { getProject } from './projectState.js';
 import { getCurrentUser } from './authState.js';
 import { getHistoricalReference, getCompany, getActivities } from './crmState.js?v=20260917-multicontact1';
 import { esc } from './html.js';
-import { formatDateTime } from './date.js';
+import { formatDateTime } from './date.js?v=20260918-gmt4-1';
 
 export const profilePage = () => {
   const project=getProject();

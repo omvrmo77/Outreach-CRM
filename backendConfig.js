@@ -1,4 +1,4 @@
-import { WORKSPACE_TIMEZONE } from './date.js';
+import { WORKSPACE_TIMEZONE } from './date.js?v=20260918-gmt4-1';
 
 // LFG Outreach CRM Supabase project. The publishable key is intentionally safe for browser use;
 // authorization is enforced by Supabase Auth + RLS/RPC checks. Never put a secret/service-role key here.

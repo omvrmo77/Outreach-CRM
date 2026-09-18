@@ -4,7 +4,7 @@ import { metricCard } from './metricCard.js';
 import { rangeLabels } from './uiConfig.js';
 import { getActiveOwners, getDashboardMetrics, getFilteredActivities, getAccount, getActivityDetail, getActivityAnalytics } from './crmState.js?v=20260917-multicontact1';
 import { getManagementOverview, getNeedsAttention, getAccountPerformance, getWeeklyReview, buildWeeklyReportText } from './managementInsights.js';
-import { formatDateTime, formatWorkspaceDateKey, formatWorkspaceWeekday } from './date.js';
+import { formatDateTime, formatWorkspaceDateKey, formatWorkspaceWeekday } from './date.js?v=20260918-gmt4-1';
 import { esc } from './html.js';
 import { canManage, getCurrentUser } from './authState.js';
 import { currentOwner, visibleOwnerOptions } from './access.js';

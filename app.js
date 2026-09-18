@@ -1,4 +1,4 @@
-import { getRoute, renderRoute } from './router.js?v=20260917-connanalytics1';
+import { getRoute, renderRoute } from './router.js?v=20260918-gmt4-1';
 import { sidebar } from './sidebar.js';
 import { topbar } from './topbar.js';
 import { loader } from './loader.js';
@@ -10,14 +10,14 @@ import {
   addConnection, addConnectionsBulk, setSelectedAccount, updateConnectionStatus, findConnection, getAccount, getConnections, getSelectedAccount,
   addCompany, getCompany, getActivities, recordCompanyAction, deleteLocalCompany, deleteActivity, updateActivity, undoLastAction, getActivityAnalytics, exportPrototypeSnapshot,
   getNoRepeatCompanies, canonicalizeIdentity, getCompanyContacts, getMeetingRecords, getFollowupRecords, getHistoricalConnectionPaging
-} from './crmState.js?v=20260917-multicontact1';
+} from './crmState.js?v=20260918-gmt4-1';
 import { esc } from './html.js';
 import { renderAnalyticsDayPanel } from './activityAnalytics.js?v=20260917-connanalytics1';
 import { activityActions } from './activityActions.js';
-import { combine12hTime, toLocalDateInputValue, getDeviceTimeValue, getDeviceDateKey, getWorkspaceDateKey, formatWorkspaceDateKey, formatDate, formatDateTime, timeParts12h, localDateTimeToDate, addWorkspaceDays, validateLocalDateTime } from './date.js';
+import { combine12hTime, toLocalDateInputValue, getDeviceTimeValue, getDeviceDateKey, getWorkspaceDateKey, formatWorkspaceDateKey, formatDate, formatDateTime, timeParts12h, localDateTimeToDate, addWorkspaceDays, validateLocalDateTime } from './date.js?v=20260918-gmt4-1';
 import { safeDecodeRouteComponent } from './route.js';
 import { parseBatchCandidates, batchCheckSummary } from './batchCheck.js';
-import { isBackendEnabled, syncBackendState, backendAddConnection, backendAddConnectionsBulk, backendAddCompany, backendRecordCompanyAction, backendUpdateActivity, backendDeleteActivity, backendUndoLastAction, backendArchiveCompany, backendSetProfileAccess, backendInviteMember, backendCheckBatch, backendLoadHistoricalConnections } from './backendSync.js?v=20260917-multicontact1';
+import { isBackendEnabled, syncBackendState, backendAddConnection, backendAddConnectionsBulk, backendAddCompany, backendRecordCompanyAction, backendUpdateActivity, backendDeleteActivity, backendUndoLastAction, backendArchiveCompany, backendSetProfileAccess, backendInviteMember, backendCheckBatch, backendLoadHistoricalConnections } from './backendSync.js?v=20260918-gmt4-1';
 
 const app = document.getElementById('app');
 let launching = true;
@@ -60,7 +60,7 @@ const configureWorkdayField=(fieldId,instantGetter,{preserve=false}={})=>{
     field.min=addWorkspaceDays(actual,-1); field.max=actual;
     if(!touched || !field.value || field.value>actual || field.value<field.min) field.value=actual;
     const help=field.parentElement?.querySelector('small');
-    if(help) help.textContent=`Actual Chicago business date: ${formatWorkspaceDateKey(actual,{weekday:'short'})}. You may count this toward ${formatWorkspaceDateKey(addWorkspaceDays(actual,-1),{weekday:'short'})} if you are finishing the previous workday.`;
+    if(help) help.textContent=`Actual GMT-04 business date: ${formatWorkspaceDateKey(actual,{weekday:'short'})}. You may count this toward ${formatWorkspaceDateKey(addWorkspaceDays(actual,-1),{weekday:'short'})} if you are finishing the previous workday.`;
   };
   field.addEventListener('change',()=>{touched=true;});
   sync();

@@ -1,4 +1,5 @@
-export const WORKSPACE_TIMEZONE = 'America/Chicago';
+export const WORKSPACE_TIMEZONE = 'Etc/GMT+4';
+export const WORKSPACE_TIMEZONE_LABEL = 'GMT-04';
 
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const asDate = (value) => value instanceof Date ? new Date(value.getTime()) : (value ? new Date(value) : null);
@@ -106,9 +107,7 @@ const workspaceOffsetMsAt = (value) => {
   return Date.UTC(p.year,p.month-1,p.day,p.hour,p.minute,p.second,0)-d.getTime();
 };
 
-// Resolve a Chicago wall-clock date/time by testing the real offsets around that date.
-// This makes nonexistent spring-forward times detectable and fall-back ambiguity explicit.
-// Ambiguous fall-back times deterministically use the EARLIER instant (the first occurrence).
+// Resolve a fixed GMT-04 wall-clock date/time. The workspace does not observe daylight saving time.
 const workspaceWallTimeCandidates = (dateKey, time='00:00') => {
   if (!DATE_KEY_RE.test(String(dateKey || '')) || !/^\d{1,2}:\d{2}(?::\d{2})?$/.test(String(time || ''))) return [];
   const wanted=desiredWallMs(dateKey,time);
@@ -132,7 +131,7 @@ export const validateWorkspaceDateTime = (dateKey, time='00:00') => {
       date:null,
       iso:null,
       ambiguous:false,
-      message:'This time does not exist in Chicago because of the daylight-saving time change. Please choose another time.'
+      message:'Choose a valid GMT-04 date and time.'
     };
   }
   const date=new Date(candidates[0].getTime());
@@ -147,8 +146,7 @@ export const validateWorkspaceDateTime = (dateKey, time='00:00') => {
   };
 };
 
-// Convert a Chicago wall-clock date/time into its exact UTC instant using the IANA zone.
-// Never use a fixed CST/CDT offset. Fall-back ambiguity uses the earlier occurrence.
+// Convert a fixed GMT-04 wall-clock date/time into its exact UTC instant.
 export const workspaceDateTimeToDate = (dateKey, time = '00:00') => {
   const result=validateWorkspaceDateTime(dateKey,time);
   return result.valid ? new Date(result.date.getTime()) : null;
@@ -266,9 +264,9 @@ export const combine12hTime = (hour, minute, period) => {
   return `${pad(h)}:${pad(m)}`;
 };
 
-// Reporting helper for completed/occurred activity. Chicago defines the business-day
+// Reporting helper for completed/occurred activity. Fixed GMT-04 defines the business-day
 // boundaries, while the actual current instant is always the upper bound. A timestamp
-// later today in Chicago therefore does not count until that instant has actually occurred.
+// later today in GMT-04 therefore does not count until that instant has actually occurred.
 export const withinRange = (value, range, customDay = '', nowValue = new Date()) => {
   const d = asDate(value);
   const now = asDate(nowValue);

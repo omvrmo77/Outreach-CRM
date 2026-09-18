@@ -1,7 +1,7 @@
 import { getProject } from './projectState.js';
 import { accounts, getSelectedAccount, getConnections, getAccount, getCompanies, getHistoricalConnectionPaging } from './crmState.js?v=20260917-multicontact1';
 import { icon } from './icons.js';
-import { formatDateTime, formatDeviceDateTime, toLocalDateInputValue, getDeviceTimeValue, getDeviceTimeZone, getWorkspaceDateKey, timeParts12h, hourOptions12h, minuteOptions, periodOptions } from './date.js';
+import { formatDateTime, formatDeviceDateTime, toLocalDateInputValue, getDeviceTimeValue, getDeviceTimeZone, getWorkspaceDateKey, timeParts12h, hourOptions12h, minuteOptions, periodOptions } from './date.js?v=20260918-gmt4-1';
 import { esc } from './html.js';
 import { filterOwnedRows } from './access.js';
 import { isManagerAccount } from './authState.js';
@@ -81,7 +81,7 @@ export const connectionsPage = () => {
       <div class="mini-stat card"><span>Messaged</span><strong>${messaged}</strong><small>Accepted is inferred when the first LinkedIn message is recorded</small></div>
     </section>
 
-    <div class="section-head connections-table-head"><div><h3 class="section-title">Connection list</h3><div class="section-meta">When a matching LinkedIn message is recorded, a pending connection is automatically counted as accepted. Times below use this device (${getDeviceTimeZone()}); reports are grouped by Chicago business time.</div></div><div class="connection-tabs"><button class="connection-tab active" data-connection-filter="ALL">All</button><button class="connection-tab" data-connection-filter="Pending">Pending</button><button class="connection-tab" data-connection-filter="Message Sent">Messaged</button></div></div>
+    <div class="section-head connections-table-head"><div><h3 class="section-title">Connection list</h3><div class="section-meta">When a matching LinkedIn message is recorded, a pending connection is automatically counted as accepted. Times below use this device (${getDeviceTimeZone()}); reports are grouped by GMT-04 business time.</div></div><div class="connection-tabs"><button class="connection-tab active" data-connection-filter="ALL">All</button><button class="connection-tab" data-connection-filter="Pending">Pending</button><button class="connection-tab" data-connection-filter="Message Sent">Messaged</button></div></div>
 
     <div class="table-wrap data-list-frame"><table><thead><tr><th>Person</th><th>Company</th><th>Account</th><th>Owner</th><th>Sent / Added</th><th>Accepted</th><th>Status</th><th></th></tr></thead><tbody id="connections-body">
       ${rows.length ? rows.map(r=>{const a=r.historicalOnly?null:getAccount(r.accountId);return `<tr data-connection-row data-status="${esc(r.status)}"><td class="cell-company"><strong>${esc(r.name)}</strong>${r.contactRole?`<small class="cell-muted">${esc(r.contactRole)}</small>`:''}</td><td>${esc(r.company)}</td><td>${r.historicalOnly?'<span class="cell-muted">—</span>':`<span class="account-badge">${esc(a.label)}</span>`}</td><td>${r.historicalOnly?'<span class="cell-muted">—</span>':esc(r.owner)}</td><td class="cell-muted">${r.historicalOnly?'Date not in source':formatDeviceDateTime(r.sentAt)}</td><td class="cell-muted">${r.historicalOnly?'—':(r.acceptedAt?formatDeviceDateTime(r.acceptedAt):'—')}</td><td><span class="status ${r.status==='Accepted'?'replied':r.status==='Message Sent'?'sent':''}">${esc(r.status)}</span></td><td class="table-action-cell">${rowActions(r,readOnly)}</td></tr>`;}).join('') : '<tr><td colspan="8" class="cell-muted">No connections yet.</td></tr>'}

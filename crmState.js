@@ -5,7 +5,7 @@ import {
   addWorkspaceDays,
   formatDateTime,
   workspaceDayDifference
-} from './date.js';
+} from './date.js?v=20260918-gmt4-1';
 
 const STORAGE_KEY = 'lfg-crm-v16-empty-state';
 const ACCOUNT_KEY = 'lfg-crm-v16-selected-account';
@@ -1377,7 +1377,7 @@ export const getNoRepeatCompanies=(project)=>{
   return[...seen.values()].sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}));
 };
 
-export const exportPrototypeSnapshot=()=>({exportedAt:new Date().toISOString(),workspaceTimezone:'America/Chicago',accounts:getAccounts(),state:JSON.parse(JSON.stringify(state)),reference:{LFG:getHistoricalReference('LFG'),O1:getHistoricalReference('O1')}});
+export const exportPrototypeSnapshot=()=>({exportedAt:new Date().toISOString(),workspaceTimezone:'Etc/GMT+4',accounts:getAccounts(),state:JSON.parse(JSON.stringify(state)),reference:{LFG:getHistoricalReference('LFG'),O1:getHistoricalReference('O1')}});
 
 export const getActivityAnalytics=(project,{owner='ALL',days=60,now=currentInstant()}={})=>{
   const nowInstant=new Date(now);const count=Math.max(1,Number(days||60));const today=getWorkspaceDateKey(nowInstant);const startKey=addWorkspaceDays(today,-(count-1));

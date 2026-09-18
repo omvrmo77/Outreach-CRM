@@ -9,7 +9,7 @@ export const settingsPage=()=>`<main class="page">
       ${lockedSelect('Default workspace','LFG')}
       ${lockedSelect('Default owner','Omar')}
       ${lockedSelect('Company duplicate warning','Enabled')}
-      ${lockedSelect('Workspace Timezone','Chicago, USA — America/Chicago','Authoritative for shared CRM business dates, reports, meetings and follow-ups. This is not a per-user preference.')}
+      ${lockedSelect('Workspace Timezone','GMT-04 — Fixed UTC−04:00','Authoritative fixed timezone for shared CRM business dates, reports, meetings and follow-ups. It does not change with daylight saving time.')}
     </div></div>
     <div class="card card-pad"><div class="section-head"><h3 class="section-title">Activity preferences</h3></div><div class="form-grid">
       ${lockedSelect('Time display','12-hour (AM / PM)','Fixed for this frontend build.')}

@@ -2,7 +2,7 @@ import { getProject } from './projectState.js';
 import { getCurrentUser, isManagerAccount } from './authState.js';
 import { getTodayAgenda, getAccount } from './crmState.js?v=20260917-multicontact1';
 import { currentOwner } from './access.js';
-import { formatDateTime, getWorkspaceDateKey, getWorkspaceHour, formatWorkspaceDateKey, formatWorkspaceWeekday } from './date.js';
+import { formatDateTime, getWorkspaceDateKey, getWorkspaceHour, formatWorkspaceDateKey, formatWorkspaceWeekday } from './date.js?v=20260918-gmt4-1';
 import { esc } from './html.js';
 import { icon } from './icons.js';
 
@@ -26,7 +26,7 @@ export const homePage=()=>{
   return `<main class="page home-page">
     <div class="home-hero">
       <div><div class="page-kicker">${project} / Today</div><h1>${greeting()}, ${esc(user?.displayName||'there')}.</h1><p>${isManagerAccount()?'Here is what needs attention across the outreach team.':'Here is what needs your attention before you start outreach.'}</p></div>
-      <div class="home-date"><span>${formatWorkspaceWeekday(todayKey,'long')}</span><strong>${formatWorkspaceDateKey(todayKey,{month:'long',day:'numeric',year:'numeric'})}</strong><small>Chicago workspace time</small></div>
+      <div class="home-date"><span>${formatWorkspaceWeekday(todayKey,'long')}</span><strong>${formatWorkspaceDateKey(todayKey,{month:'long',day:'numeric',year:'numeric'})}</strong><small>GMT-04 workspace time</small></div>
     </div>
 
     <section class="home-priority-grid">
@@ -36,8 +36,8 @@ export const homePage=()=>{
       </div>
       <div class="home-side-stack">
         <div class="card card-pad home-mini-card"><span>Needs attention</span><strong>${agenda.needsAttention.length}</strong><small>Open items right now</small></div>
-        <div class="card card-pad home-mini-card"><span>Follow-ups today</span><strong>${agenda.followups.length}</strong><small>Chicago business day</small></div>
-        <div class="card card-pad home-mini-card"><span>Meetings today</span><strong>${agenda.meetings.length}</strong><small>Chicago business day</small></div>
+        <div class="card card-pad home-mini-card"><span>Follow-ups today</span><strong>${agenda.followups.length}</strong><small>GMT-04 business day</small></div>
+        <div class="card card-pad home-mini-card"><span>Meetings today</span><strong>${agenda.meetings.length}</strong><small>GMT-04 business day</small></div>
       </div>
     </section>
 
