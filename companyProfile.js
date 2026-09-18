@@ -1,9 +1,9 @@
-import { getProject } from './projectState.js';
-import { getCompany, getActivities, getAccount, getAccounts, getChangeHistory, getCompanyContacts } from './crmState.js?v=20260918-registry1';
+import { getProject } from './projectState.js?v=20260918-major4';
+import { getCompany, getActivities, getAccount, getAccounts, getChangeHistory, getCompanyContacts } from './crmState.js?v=20260918-major4';
 import { icon } from './icons.js';
 import { formatDateTime, formatDeviceDateTime, getDeviceTimeValue, getDeviceDateKey, getDeviceTimeZone, getWorkspaceDateKey, formatWorkspaceDateKey, addWorkspaceDays, timeParts12h, hourOptions12h, minuteOptions, periodOptions } from './date.js?v=20260918-gmt4-1';
 import { esc } from './html.js';
-import { getCurrentUser, isOutreachAccount, isManagerAccount } from './authState.js';
+import { getCurrentUser, isOutreachAccount, isManagerAccount } from './authState.js?v=20260918-major4';
 
 const eventIcon = (type) => ({
   connection_sent:'connections', connection_accepted:'check', message_sent:'message', followup_sent:'followups', followup_scheduled:'followups',
@@ -45,6 +45,9 @@ export const companyProfilePage = (name,{invalidRoute=false}={}) => {
   const first=chronological[0];
   const last=activities[0];
   const contacts=getCompanyContacts(row);
+  const relationshipDirections=[...new Set(contacts.map(c=>c.direction).filter(Boolean))];
+  const directionValue=relationshipDirections.length>1?'mixed':(relationshipDirections[0]||row.outreachDirection||'');
+  const directionLabel=directionValue==='mixed'?'Mixed across contacts':directionValue==='inbound'?'Inbound · they contacted us first':directionValue==='outbound'?'Outbound · we contacted them first':'';
   const primary=contacts.find(c=>c.id===row.primaryContactId)||contacts[0]||null;
   const account=getAccount(primary?.accountId||row.accountId);
   const now=new Date();
@@ -97,8 +100,8 @@ export const companyProfilePage = (name,{invalidRoute=false}={}) => {
         <div class="card card-pad">
           <div class="section-head"><h3 class="section-title">Company details</h3></div>
           <div class="info-list single-column">
-            <div class="info-item"><span>Contacts</span><div class="contact-detail-list">${contacts.length?contacts.map(c=>`<div class="contact-detail-row"><strong>${esc(c.name)}</strong><small>${esc(c.role||'Role not set')} · ${esc(getAccount(c.accountId).label)}</small></div>`).join(''):'<strong>—</strong>'}</div></div>
-            <div class="info-item"><span>Next step</span><strong>${esc(row.nextStep||'Review relationship')}</strong></div>
+            <div class="info-item"><span>Contacts</span><div class="contact-detail-list">${contacts.length?contacts.map(c=>`<div class="contact-detail-row"><strong>${esc(c.name)}</strong><small>${esc(c.role||'Role not set')} · ${esc(getAccount(c.accountId).label)}${c.direction?` · ${esc(c.direction==='inbound'?'Inbound':'Outbound')}`:''}</small></div>`).join(''):'<strong>—</strong>'}</div></div>
+            ${directionLabel?`<div class="info-item"><span>Direction</span><strong>${esc(directionLabel)}</strong></div>`:''}<div class="info-item"><span>Next step</span><strong>${esc(row.nextStep||'Review relationship')}</strong></div>
             ${row.website?`<div class="info-item"><span>Website</span><strong>${esc(row.website)}</strong></div>`:''}
             ${row.targetCategory?`<div class="info-item"><span>Target category</span><strong>${esc(row.targetCategory)}</strong></div>`:''}
             ${row.priority?`<div class="info-item"><span>Priority</span><strong>${esc(row.priority)}</strong></div>`:''}

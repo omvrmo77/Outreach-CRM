@@ -1,23 +1,24 @@
-import { getRoute, renderRoute } from './router.js?v=20260918-registry1';
+import { getRoute, renderRoute } from './router.js?v=20260918-major4';
 import { sidebar } from './sidebar.js';
-import { topbar } from './topbar.js';
+import { topbar } from './topbar.js?v=20260918-major4';
 import { loader } from './loader.js';
-import { getProject, setProject } from './projectState.js';
+import { getProject, setProject, ensureProjectAllowed } from './projectState.js?v=20260918-major4';
 import { setOwner, setRange, setDay } from './managerState.js';
-import { authenticate, initializeAuth, claimFirstAdmin, acceptInvitation, clearVerificationReturn, getInviteToken, normalizeInviteReturn, isAuthenticated, signOut, getCurrentUser, canManage, isOutreachAccount, isManagerAccount } from './authState.js';
+import { authenticate, initializeAuth, claimFirstAdmin, acceptInvitation, clearVerificationReturn, getInviteToken, normalizeInviteReturn, isAuthenticated, signOut, getCurrentUser, canManage, isOutreachAccount, isManagerAccount, getAccessibleProductCodes, canAccessProduct } from './authState.js?v=20260918-major4';
 import { currentOwner } from './access.js';
 import {
   addConnection, addConnectionsBulk, setSelectedAccount, updateConnectionStatus, findConnection, getAccount, getConnections, getSelectedAccount,
   addCompany, getCompany, getActivities, recordCompanyAction, deleteLocalCompany, deleteActivity, updateActivity, undoLastAction, getActivityAnalytics, exportPrototypeSnapshot,
   getNoRepeatCompanies, canonicalizeIdentity, getCompanyContacts, getMeetingRecords, getFollowupRecords, getHistoricalConnectionPaging
-} from './crmState.js?v=20260918-registry1';
+} from './crmState.js?v=20260918-major4';
 import { esc } from './html.js';
 import { renderAnalyticsDayPanel } from './activityAnalytics.js?v=20260917-connanalytics1';
+import { renderMonthlyReport, monthlyReportCsv, monthlyReportPrintHtml } from './reports.js?v=20260918-major4';
 import { activityActions } from './activityActions.js';
 import { combine12hTime, toLocalDateInputValue, getDeviceTimeValue, getDeviceDateKey, getWorkspaceDateKey, formatWorkspaceDateKey, formatDate, formatDateTime, timeParts12h, localDateTimeToDate, addWorkspaceDays, validateLocalDateTime } from './date.js?v=20260918-gmt4-1';
 import { safeDecodeRouteComponent } from './route.js';
 import { parseBatchCandidates, batchCheckSummary } from './batchCheck.js';
-import { isBackendEnabled, syncBackendState, backendAddConnection, backendAddConnectionsBulk, backendAddCompany, backendRecordCompanyAction, backendUpdateActivity, backendDeleteActivity, backendUndoLastAction, backendArchiveCompany, backendSetProfileAccess, backendInviteMember, backendCheckBatch, backendLoadHistoricalConnections } from './backendSync.js?v=20260918-gmt4-1';
+import { isBackendEnabled, syncBackendState, backendAddConnection, backendAddConnectionsBulk, backendAddCompany, backendRecordCompanyAction, backendUpdateActivity, backendDeleteActivity, backendUndoLastAction, backendArchiveCompany, backendSetProfileAccess, backendInviteMember, backendCheckBatch, backendLoadHistoricalConnections, backendReportSummary } from './backendSync.js?v=20260918-major4';
 
 const app = document.getElementById('app');
 let launching = true;
@@ -100,6 +101,7 @@ const render = () => {
     return;
   }
 
+  if(isAuthenticated()) ensureProjectAllowed(getAccessibleProductCodes());
   let route = getRoute();
   const inviteToken=getInviteToken();
   if(inviteToken && !isAuthenticated()){
@@ -138,7 +140,7 @@ const render = () => {
 };
 
 const BLOCK_FIELD_NAMES = [
-  'Company','Contact Name','Contact','Title','Personality','Project Summary','Why Interesting','Potential LFG Angle','Funding Status','Lead Type','Agenda','Outreach Message','Message','First Message','Status','Notes',
+  'Company','Contact Name','Contact','Title','Direction','Outreach Direction','Personality','Project Summary','Why Interesting','Potential LFG Angle','Funding Status','Lead Type','Agenda','Outreach Message','Message','First Message','Status','Notes',
   'Website','Target Category','Priority','Recommended Timing','Best Platform','Primary Route','Fallback Route','Why This Contact','01 Angle','O1 Angle','Desired Outcome','Next Step','Telegram Username','TG Username','Group Chat','LinkedIn Account Used'
 ];
 const BLOCK_FIELD_LOOKUP = new Map(BLOCK_FIELD_NAMES.map(name=>[name.toLowerCase(),name]));
@@ -364,11 +366,46 @@ const bindAddCompany = () => {
     return findConnection(project,contact,existing?.id||company,currentOwner());
   };
 
+  const applyDirectionLanguage=()=>{
+    const direction=document.getElementById('company-direction')?.value||'';
+    const title=document.getElementById('initial-message-title');
+    const copy=document.getElementById('initial-message-copy');
+    const dateLabel=document.getElementById('initial-message-date-label');
+    const timeLabel=document.getElementById('initial-message-time-label');
+    const bodyLabel=document.getElementById('initial-message-body-label');
+    const body=document.getElementById('initial-message-body');
+    const help=document.getElementById('initial-message-help');
+    if(direction==='inbound'){
+      if(title) title.textContent='First inbound message received';
+      if(copy) copy.textContent='Paste the exact first message they sent us. It is recorded as received, not as a sent message.';
+      if(dateLabel) dateLabel.textContent='Message received date';
+      if(timeLabel) timeLabel.textContent='Message received time';
+      if(bodyLabel) bodyLabel.textContent='Message received';
+      if(body&&!body.readOnly) body.placeholder='Paste the exact first message they sent us.';
+      if(help) help.textContent='Required. This becomes the first inbound message in the timeline and does not count toward Messages Sent.';
+    }else if(direction==='outbound'){
+      if(title) title.textContent='First message sent';
+      if(copy) copy.textContent='Paste the exact first outreach message we sent.';
+      if(dateLabel) dateLabel.textContent='Message sent date';
+      if(timeLabel) timeLabel.textContent='Message sent time';
+      if(bodyLabel) bodyLabel.textContent='Message sent';
+      if(body&&!body.readOnly) body.placeholder='Paste the exact message that was sent.';
+      if(help) help.textContent='Required. This becomes the first sent message in the relationship timeline.';
+    }else{
+      if(title) title.textContent='First conversation message';
+      if(copy) copy.textContent='Choose Inbound or Outbound so the CRM records this message correctly.';
+      if(dateLabel) dateLabel.textContent='Message date';
+      if(timeLabel) timeLabel.textContent='Message time';
+      if(bodyLabel) bodyLabel.textContent='Message';
+      if(body&&!body.readOnly) body.placeholder='Paste the exact first message.';
+      if(help) help.textContent='Required. Choose the relationship direction first.';
+    }
+  };
+
   const resetMessageMode=()=>{
     const messageBody=document.getElementById('initial-message-body');
     if(messageBody){ messageBody.readOnly=false; messageBody.required=true; }
-    const help=document.querySelector('#initial-message-panel .field-help');
-    if(help) help.textContent='Required. This becomes the first message in the relationship timeline.';
+    applyDirectionLanguage();
   };
 
   if(parse&&paste&&fields&&banner&&save) parse.addEventListener('click',()=>{
@@ -387,8 +424,13 @@ const bindAddCompany = () => {
     const messageBody=document.getElementById('initial-message-body');
     const accountWrap=document.getElementById('company-account-wrap');
     const accountSelect=document.getElementById('company-account');
+    const directionWrap=document.getElementById('company-direction-wrap');
+    const directionSelect=document.getElementById('company-direction');
+    directionWrap?.classList.remove('hidden');
+    if(directionSelect) directionSelect.value=String(data.Direction||data['Outreach Direction']||'').toLowerCase();
     accountWrap?.classList.remove('hidden');
     messagePanel?.classList.remove('hidden');
+    if(directionSelect) directionSelect.disabled=false;
     resetMessageMode();
 
     const companyContacts=existing?getCompanyContacts(existing):[];
@@ -412,19 +454,22 @@ const bindAddCompany = () => {
     if(completingX){
       banner.classList.add('success');
       banner.innerHTML=`<span>✓</span><span><strong>${esc(contact)} · ${esc(company)}</strong> already has its first X message recorded. This will complete the company details without creating a second message.</span>`;
+      if(directionSelect){ directionSelect.value='outbound'; directionSelect.disabled=true; }
+      applyDirectionLanguage();
       if(messageBody){ messageBody.readOnly=true; messageBody.required=false; }
-      const help=document.querySelector('#initial-message-panel .field-help');
-      if(help) help.textContent='Already recorded from X outreach. Saving will reuse this exact message and timestamp.';
+      const help=document.getElementById('initial-message-help');
+      if(help) help.textContent='Already recorded from X outreach. Saving will reuse this exact outbound message and timestamp.';
       save.dataset.baseAllowed=company&&contact?'true':'false';
       save.disabled=!(company&&contact);
       save.textContent='Complete company details';
+      refreshCompanySaveState();
       return;
     }
 
     if(existing && sameExactContact && match){
       const account=getAccount(match.accountId);
       banner.classList.add('success');
-      banner.innerHTML=`<span>✓</span><span>Exact connection match found for <strong>${esc(contact)} · ${esc(company)}</strong> via ${esc(account.label)}. This is the same saved contact. Saving the first LinkedIn message will attach it to this connection, infer acceptance, and will not create a duplicate contact.</span>`;
+      banner.innerHTML=`<span>✓</span><span>Exact connection match found for <strong>${esc(contact)} · ${esc(company)}</strong> via ${esc(account.label)}. This is the same saved contact. Saving the first LinkedIn message will attach it to this connection, confirm acceptance, and will not create a duplicate contact.</span>`;
       save.dataset.baseAllowed=company&&contact?'true':'false';
       save.disabled=!(company&&contact&&incomingMessage);
       save.textContent='Add message + mark accepted';
@@ -442,17 +487,18 @@ const bindAddCompany = () => {
     } else if(match){
       const account=getAccount(match.accountId);
       banner.classList.add('success');
-      banner.innerHTML=`<span>✓</span><span>Connection found: <strong>${esc(contact)} · ${esc(company)}</strong> via ${esc(account.label)}. Saving the first LinkedIn message will infer acceptance and keep everything in one relationship.</span>`;
+      banner.innerHTML=`<span>✓</span><span>Connection found: <strong>${esc(contact)} · ${esc(company)}</strong> via ${esc(account.label)}. Saving the first LinkedIn message will confirm acceptance and keep everything in one relationship.</span>`;
       save.dataset.baseAllowed=company&&contact?'true':'false';
       save.disabled=!(company&&contact&&incomingMessage);
       save.textContent='Add company + message';
     } else {
       banner.classList.add('neutral');
-      banner.innerHTML=`<span>•</span><span>No matching pending connection found. The relationship can still be saved with its first sent message, but no LinkedIn acceptance will be inferred.</span>`;
+      banner.innerHTML=`<span>•</span><span>No matching pending connection found. The relationship can still be saved with its first conversation message, but no LinkedIn acceptance will be confirmed from a matched connection.</span>`;
       save.dataset.baseAllowed=company&&contact?'true':'false';
       save.disabled=!(company&&contact&&incomingMessage);
       save.textContent='Add company + message';
     }
+    refreshCompanySaveState();
   });
 
   const clear=document.getElementById('clear-company');
@@ -462,6 +508,8 @@ const bindAddCompany = () => {
     banner.className='duplicate-banner neutral'; banner.innerHTML='Waiting for company details.';
     document.getElementById('initial-message-panel')?.classList.add('hidden');
     document.getElementById('company-account-wrap')?.classList.add('hidden');
+    document.getElementById('company-direction-wrap')?.classList.add('hidden');
+    const direction=document.getElementById('company-direction'); if(direction){ direction.value=''; direction.disabled=false; }
     document.getElementById('same-name-contact-confirm')?.classList.add('hidden');
     const force=document.getElementById('force-new-contact'); if(force) force.checked=false;
     const messageBody=document.getElementById('initial-message-body'); if(messageBody){messageBody.value='';messageBody.readOnly=false;messageBody.required=true;}
@@ -474,11 +522,13 @@ const bindAddCompany = () => {
     const force=document.getElementById('force-new-contact');
     const confirmWrap=document.getElementById('same-name-contact-confirm');
     const needsForce=confirmWrap && !confirmWrap.classList.contains('hidden');
-    const allowed=save.dataset.baseAllowed==='true' && (!needsForce || force?.checked);
+    const direction=document.getElementById('company-direction');
+    const allowed=save.dataset.baseAllowed==='true' && (!needsForce || force?.checked) && Boolean(direction?.value);
     save.disabled=!(allowed && (message?.readOnly || message?.value.trim()));
   };
   document.getElementById('initial-message-body')?.addEventListener('input',refreshCompanySaveState);
   document.getElementById('force-new-contact')?.addEventListener('change',refreshCompanySaveState);
+  document.getElementById('company-direction')?.addEventListener('change',()=>{applyDirectionLanguage();refreshCompanySaveState();});
 
   const initialMessageInstant=()=>{const t=combine12hTime(document.getElementById('initial-message-hour')?.value,document.getElementById('initial-message-minute')?.value,document.getElementById('initial-message-period')?.value);return resolveLocalFormInstant(document.getElementById('initial-message-date'),t);};
   const syncInitialMessageWorkday=configureWorkdayField('initial-message-workday',initialMessageInstant);
@@ -486,18 +536,21 @@ const bindAddCompany = () => {
 
   if(save) save.addEventListener('click',async()=>{
     if(!parsedCompanyDraft) return;
+    const direction=document.getElementById('company-direction')?.value||'';
+    if(!direction){ showToast('company-toast','Choose inbound or outbound before saving'); document.getElementById('company-direction')?.focus(); return; }
+    parsedCompanyDraft={...parsedCompanyDraft,Direction:direction};
     const existing=getCompany(project,parsedCompanyDraft.Company||'');
     const contact=parsedCompanyDraft['Contact Name']||parsedCompanyDraft.Contact||'';
     const role=parsedCompanyDraft.Title||'';
     const match=connectionForDraft(existing,contact,parsedCompanyDraft.Company||'',role);
     const completingX=!!(existing?.provisional && getCompanyContacts(existing).some(c=>canonicalizeIdentity(c.name)===canonicalizeIdentity(contact)) && match && getAccount(match.accountId).platform==='X' && match.status==='Message Sent');
     const messageBody=document.getElementById('initial-message-body')?.value.trim()||'';
-    if(!completingX && !messageBody){ showToast('company-toast','Paste the first message before saving'); document.getElementById('initial-message-body')?.focus(); return; }
+    if(!completingX && !messageBody){ showToast('company-toast',direction==='inbound'?'Paste the first inbound message before saving':'Paste the first message before saving'); document.getElementById('initial-message-body')?.focus(); return; }
     const accountId=document.getElementById('company-account')?.value||getSelectedAccount(project);
     const messageTime=combine12hTime(document.getElementById('initial-message-hour')?.value,document.getElementById('initial-message-minute')?.value,document.getElementById('initial-message-period')?.value);
     const messageSentAt=resolveLocalFormInstant(document.getElementById('initial-message-date'),messageTime);
     const workdayDate=document.getElementById('initial-message-workday')?.value||getWorkspaceDateKey(messageSentAt);
-    if(!messageSentAt){ showToast('company-toast','Choose when the message was sent'); return; }
+    if(!messageSentAt){ showToast('company-toast',direction==='inbound'?'Choose when the inbound message was received':'Choose when the message was sent'); return; }
     if(!completingX&&!validateOccurredFormInstant(document.getElementById('initial-message-date'),messageSentAt)) return;
     if(!completingX&&match&&getAccount(match.accountId).platform==='LinkedIn'&&new Date(messageSentAt)<new Date(match.sentAt)){
       reportFormTimeError(document.getElementById('initial-message-date'),'This message cannot occur before the connection request.');
@@ -518,7 +571,8 @@ const bindAddCompany = () => {
     if(!result.ok&&result.reason==='invalid-chronology'){ showToast('company-toast','This message cannot occur before the connection request.'); return; }
     if(result.ok){
       const companyRef=result.company.id||result.company.company; parsedCompanyDraft=null;
-      showToast('company-toast',result.reusedInitialMessage?'Company details completed · original X message reused':result.matchedConnection?'Company added · connection matched':'Company added');
+      const directionLabel=direction==='inbound'?'Inbound':'Outbound';
+      showToast('company-toast',result.reusedInitialMessage?'Company details completed · original X message reused':result.matchedConnection?`${directionLabel} relationship added · connection matched`:`${directionLabel} relationship added`);
       setTimeout(()=>{ location.hash=`#/company/${encodeURIComponent(companyRef)}`; },350);
     }
   });
@@ -833,6 +887,7 @@ const bindManagementViews = () => {
     const fullName=document.getElementById('team-invite-name')?.value.trim()||'';
     const email=document.getElementById('team-invite-email')?.value.trim()||'';
     const role=document.getElementById('team-invite-role')?.value||'team_member';
+    const productCodes=[...document.querySelectorAll('input[name="team-invite-products"]:checked')].map(x=>x.value);
     const error=document.getElementById('team-invite-error');
     const resultBox=document.getElementById('team-invite-result');
     const button=inviteForm.querySelector('button[type="submit"]');
@@ -840,12 +895,13 @@ const bindManagementViews = () => {
     if(resultBox){resultBox.classList.add('hidden');resultBox.innerHTML='';}
     button.disabled=true;button.classList.add('loading');
     try{
-      const result=await backendInviteMember({email,fullName,role});
+      if(!productCodes.length) throw new Error('Choose at least one product.');
+      const result=await backendInviteMember({email,fullName,role,productCodes});
       const invitation=result?.invitation;
       if(!result?.ok||!invitation?.invite_url) throw new Error('Invitation link was not created.');
       if(resultBox){
         resultBox.classList.remove('hidden');
-        resultBox.innerHTML=`<div><strong>Invitation ready</strong><span>${esc(invitation.email)} · expires ${esc(formatDateTime(invitation.expires_at))}</span></div><div class="team-invite-link-row"><input id="team-invite-link" readonly value="${esc(invitation.invite_url)}"><button class="mini-action" id="copy-team-invite-link" type="button">Copy link</button></div><small>Send this private one-time link to the invited person. They will create their password from it.</small>`;
+        resultBox.innerHTML=`<div><strong>Invitation ready</strong><span>${esc(invitation.email)} · ${(invitation.product_codes||[]).map(esc).join(' + ')} · expires ${esc(formatDateTime(invitation.expires_at))}</span></div><div class="team-invite-link-row"><input id="team-invite-link" readonly value="${esc(invitation.invite_url)}"><button class="mini-action" id="copy-team-invite-link" type="button">Copy link</button></div><small>Send this private one-time link to the invited person. They will create their password from it.</small>`;
         document.getElementById('copy-team-invite-link')?.addEventListener('click',async()=>{
           const input=document.getElementById('team-invite-link');
           try{await navigator.clipboard.writeText(input?.value||'');}
@@ -868,12 +924,13 @@ const bindManagementViews = () => {
     const userId=btn.dataset.teamUser||'';
     const action=btn.dataset.teamAccess||'';
     const role=document.querySelector(`[data-team-role="${CSS.escape(userId)}"]`)?.value||'team_member';
+    const productCodes=[...document.querySelectorAll(`[data-team-product-for="${CSS.escape(userId)}"]:checked`)].map(x=>x.value);
     if(!userId) return;
     btn.disabled=true;
     try{
-      if(action==='reject') await backendSetProfileAccess({userId,role,approvalStatus:'disabled',isActive:false});
-      else if(action==='deactivate') await backendSetProfileAccess({userId,role,approvalStatus:'approved',isActive:false});
-      else await backendSetProfileAccess({userId,role,approvalStatus:'approved',isActive:true});
+      if(action==='reject') await backendSetProfileAccess({userId,role,approvalStatus:'disabled',isActive:false,productCodes});
+      else if(action==='deactivate') await backendSetProfileAccess({userId,role,approvalStatus:'approved',isActive:false,productCodes});
+      else await backendSetProfileAccess({userId,role,approvalStatus:'approved',isActive:true,productCodes});
       await syncBackendState(getProject());
       render();
       showToast('team-toast','Team access updated');
@@ -890,6 +947,76 @@ const bindManagementViews = () => {
     try{ await navigator.clipboard.writeText(text); }
     catch{ weeklySource.classList.remove('visually-hidden'); weeklySource.select(); document.execCommand('copy'); weeklySource.classList.add('visually-hidden'); }
     showToast('report-toast','Weekly report copied');
+  });
+
+  let monthlyReportData=null;
+  const viewMonthly=document.getElementById('view-monthly-report');
+  const downloadMonthly=document.getElementById('download-monthly-report');
+  const printMonthly=document.getElementById('print-monthly-report');
+  const monthlyResult=document.getElementById('monthly-report-result');
+  const monthlyStatus=document.getElementById('monthly-report-status');
+  const monthlyOwner=document.getElementById('monthly-report-owner');
+  const monthlyProduct=document.getElementById('monthly-report-product');
+  const syncMonthlyProductScope=()=>{
+    if(!monthlyProduct) return;
+    const selected=monthlyOwner?.selectedOptions?.[0];
+    const assigned=(selected?.dataset?.products||'').split(',').map(x=>x.trim()).filter(Boolean);
+    [...monthlyProduct.options].forEach(option=>{
+      if(option.value==='ALL'){ option.disabled=false; return; }
+      option.disabled=Boolean(assigned.length)&&!assigned.includes(option.value);
+    });
+    if(monthlyProduct.selectedOptions?.[0]?.disabled) monthlyProduct.value='ALL';
+  };
+  monthlyOwner?.addEventListener('change',syncMonthlyProductScope);
+  syncMonthlyProductScope();
+  const monthlyRange=()=>{
+    const value=document.getElementById('monthly-report-month')?.value||'';
+    const match=value.match(/^(\d{4})-(\d{2})$/);
+    if(!match) return null;
+    const year=Number(match[1]), month=Number(match[2]);
+    const endDay=new Date(Date.UTC(year,month,0)).getUTCDate();
+    return {startDate:`${value}-01`,endDate:`${value}-${String(endDay).padStart(2,'0')}`,label:value};
+  };
+  viewMonthly?.addEventListener('click',async()=>{
+    const range=monthlyRange();
+    if(!range){showToast('report-toast','Choose a valid month');return;}
+    const ownerUserId=document.getElementById('monthly-report-owner')?.value||null;
+    const scope=document.getElementById('monthly-report-product')?.value||'ALL';
+    const productCodes=scope==='ALL'?null:[scope];
+    viewMonthly.disabled=true; viewMonthly.classList.add('loading');
+    if(monthlyStatus) monthlyStatus.textContent='Building monthly report…';
+    try{
+      monthlyReportData=await backendReportSummary({ownerUserId,startDate:range.startDate,endDate:range.endDate,productCodes});
+      if(monthlyResult) monthlyResult.innerHTML=renderMonthlyReport(monthlyReportData||{});
+      if(monthlyStatus) monthlyStatus.textContent=`Report ready · ${monthlyReportData?.owner_name||'All team'} · ${(monthlyReportData?.product_codes||[]).join(' + ')||'All products'}`;
+      if(downloadMonthly) downloadMonthly.disabled=false;
+      if(printMonthly) printMonthly.disabled=false;
+      showToast('report-toast','Monthly report ready');
+    }catch(error){
+      monthlyReportData=null;
+      if(monthlyResult) monthlyResult.innerHTML='';
+      if(monthlyStatus) monthlyStatus.textContent=error?.message||'Monthly report could not be loaded.';
+      if(downloadMonthly) downloadMonthly.disabled=true;
+      if(printMonthly) printMonthly.disabled=true;
+    }finally{viewMonthly.disabled=false;viewMonthly.classList.remove('loading');}
+  });
+  downloadMonthly?.addEventListener('click',()=>{
+    if(!monthlyReportData) return;
+    const csv=monthlyReportCsv(monthlyReportData);
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const month=(document.getElementById('monthly-report-month')?.value||'monthly').replace(/[^0-9-]/g,'');
+    const owner=(monthlyReportData.owner_name||'all-team').replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'').toLowerCase();
+    const a=document.createElement('a'); a.href=url; a.download=`outreach-monthly-report-${owner}-${month}.csv`; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    showToast('report-toast','Monthly CSV downloaded');
+  });
+  printMonthly?.addEventListener('click',()=>{
+    if(!monthlyReportData) return;
+    const win=window.open('','_blank');
+    if(!win){showToast('report-toast','Allow pop-ups to print the report');return;}
+    win.document.open(); win.document.write(monthlyReportPrintHtml(monthlyReportData)); win.document.close();
+    win.focus(); setTimeout(()=>win.print(),250);
   });
 
   document.getElementById('export-crm-data')?.addEventListener('click',()=>{
@@ -934,7 +1061,9 @@ const bindGlobalSearch = () => {
 
 const bind = () => {
   document.querySelectorAll('[data-project]').forEach(btn => btn.addEventListener('click', async () => {
-    setProject(btn.dataset.project);
+    const target=btn.dataset.project;
+    if(!canAccessProduct(target)){ showToast('team-toast','You do not have access to this product'); return; }
+    setProject(target);
     if(isBackendEnabled()&&isAuthenticated()){
       launching=true; render();
       try{await syncBackendState(getProject());}catch(error){console.error(error);}
@@ -976,7 +1105,7 @@ const bind = () => {
       return;
     }
     login.classList.add('login-success');
-    const user=getCurrentUser(); setOwner(user?.role==='outreach' ? (user.ownerName||user.displayName) : 'ALL'); setRange('7D');
+    const user=getCurrentUser(); setOwner(user?.role==='outreach' ? (user.ownerName||user.displayName) : 'ALL'); setRange('7D'); ensureProjectAllowed(getAccessibleProductCodes());
     try{if(isBackendEnabled())await syncBackendState(getProject());}catch(error){error && console.error(error);}
     setTimeout(() => { location.hash = '#/home'; render(); }, 160);
   });
@@ -994,7 +1123,7 @@ const bind = () => {
     const result=await acceptInvitation(password);
     button.disabled=false; button.classList.remove('loading');
     if(!result.ok){error.textContent=result.message||'Invitation could not be accepted.';return;}
-    const user=getCurrentUser(); setOwner(user?.role==='outreach'?(user.ownerName||user.displayName):'ALL'); setRange('7D');
+    const user=getCurrentUser(); setOwner(user?.role==='outreach'?(user.ownerName||user.displayName):'ALL'); setRange('7D'); ensureProjectAllowed(getAccessibleProductCodes());
     try{await syncBackendState(getProject());}catch(syncError){error.textContent=syncError.message||'Account activated, but CRM data could not be loaded.';return;}
     location.hash='#/home'; render();
   });
@@ -1006,7 +1135,7 @@ const bind = () => {
     const result=await claimFirstAdmin(code);
     button.disabled=false; button.classList.remove('loading');
     if(!result.ok){error.textContent=result.message||'Bootstrap code was not accepted.';return;}
-    const user=getCurrentUser(); setOwner(user?.role==='outreach'?(user.ownerName||user.displayName):'ALL'); setRange('7D');
+    const user=getCurrentUser(); setOwner(user?.role==='outreach'?(user.ownerName||user.displayName):'ALL'); setRange('7D'); ensureProjectAllowed(getAccessibleProductCodes());
     try{await syncBackendState(getProject());}catch(syncError){error.textContent=syncError.message||'Admin activated, but CRM data could not be loaded.';return;}
     location.hash='#/home'; render();
   });
@@ -1087,7 +1216,7 @@ const waitForFrontendReady = async () => {
   if(!inviteToken && isBackendEnabled()){
     try{
       const restored=await initializeAuth();
-      if(restored) await syncBackendState(getProject());
+      if(restored){ ensureProjectAllowed(getAccessibleProductCodes()); await syncBackendState(getProject()); }
     }catch(error){
       console.error('Backend session restore failed',error);
       await signOut();

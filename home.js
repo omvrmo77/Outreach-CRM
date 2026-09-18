@@ -1,6 +1,6 @@
-import { getProject } from './projectState.js';
-import { getCurrentUser, isManagerAccount } from './authState.js';
-import { getTodayAgenda, getAccount } from './crmState.js?v=20260918-registry1';
+import { getProject } from './projectState.js?v=20260918-major4';
+import { getCurrentUser, isManagerAccount } from './authState.js?v=20260918-major4';
+import { getTodayAgenda, getAccount } from './crmState.js?v=20260918-major4';
 import { currentOwner } from './access.js';
 import { formatDateTime, getWorkspaceDateKey, getWorkspaceHour, formatWorkspaceDateKey, formatWorkspaceWeekday } from './date.js?v=20260918-gmt4-1';
 import { esc } from './html.js';

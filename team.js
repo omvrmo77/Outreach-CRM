@@ -1,7 +1,7 @@
-import { getProject } from './projectState.js';
+import { getProject } from './projectState.js?v=20260918-major4';
 import { getTeamComparison } from './managementInsights.js';
-import { getBackendProfiles } from './crmState.js?v=20260918-registry1';
-import { getCurrentUser } from './authState.js';
+import { getBackendProfiles } from './crmState.js?v=20260918-major4';
+import { getCurrentUser } from './authState.js?v=20260918-major4';
 import { icon } from './icons.js';
 import { esc } from './html.js';
 
@@ -12,6 +12,8 @@ const approvalLabel=(profile={})=>{
   if(profile.approval_status==='approved') return 'Approved';
   return 'Pending';
 };
+const productLabel=(code='')=>code==='LFG'?'LFG':code==='O1'?'O1':code;
+const productsText=(codes=[])=>Array.isArray(codes)&&codes.length?codes.map(productLabel).join(' + '):'No product access';
 
 export const teamPage=()=>{
   const project=getProject();
@@ -19,15 +21,19 @@ export const teamPage=()=>{
   const profiles=getBackendProfiles();
   const current=getCurrentUser();
   const isAdmin=current?.backendRole==='admin';
+  const assignableProducts=Array.isArray(current?.productCodes)?current.productCodes:[];
+  const inviteProductChecks=assignableProducts.map(code=>`<label class="product-access-option"><input type="checkbox" name="team-invite-products" value="${esc(code)}"> <span><strong>${esc(productLabel(code))}</strong><small>Allow access to ${esc(productLabel(code))}</small></span></label>`).join('');
+
   return `<main class="page">
     <div class="page-header"><div><div class="page-kicker">${project} / Team</div><h1 class="page-title">Team performance</h1></div></div>
 
     ${isAdmin?`<section class="card card-pad team-invite-card">
-      <div class="section-head"><div><div class="page-kicker">Admin access</div><h3 class="section-title">Invite team member</h3><p class="section-copy">Create a private one-time link, assign the role now, then send the link to the person you want to add.</p></div></div>
+      <div class="section-head"><div><div class="page-kicker">Admin access</div><h3 class="section-title">Invite team member</h3><p class="section-copy">Assign both the person's role and the products they are allowed to open. Product access can be changed later.</p></div></div>
       <form id="team-invite-form" class="team-invite-form">
-        <div class="field"><label for="team-invite-name">Full name</label><input id="team-invite-name" autocomplete="name" placeholder="Maureen Bacaltos" required></div>
+        <div class="field"><label for="team-invite-name">Full name</label><input id="team-invite-name" autocomplete="name" placeholder="Full name" required></div>
         <div class="field"><label for="team-invite-email">Email</label><input id="team-invite-email" type="email" autocomplete="email" placeholder="name@company.com" required></div>
         <div class="field"><label for="team-invite-role">Role</label><select id="team-invite-role"><option value="team_member">Outreach</option><option value="outreach_lead">Outreach Lead</option><option value="head_operations">Head of Operations</option><option value="admin">Admin</option></select></div>
+        <fieldset class="team-product-fieldset"><legend>Product access</legend><div class="product-access-options">${inviteProductChecks||'<span class="empty-mini">No products available to assign.</span>'}</div></fieldset>
         <div class="team-invite-submit"><button class="button primary" type="submit">${icon('plus')} Create invitation</button></div>
       </form>
       <div class="login-error" id="team-invite-error" role="alert" aria-live="polite"></div>
@@ -39,9 +45,11 @@ export const teamPage=()=>{
         const name=profile.full_name||profile.username||'LFG user';
         const initials=(profile.initials||name.split(/\s+/).slice(0,2).map(x=>x[0]||'').join('')).toUpperCase();
         const status=approvalLabel(profile);
+        const codes=Array.isArray(profile.product_codes)?profile.product_codes:[];
+        const editProductChecks=assignableProducts.map(code=>`<label class="product-access-option compact"><input type="checkbox" data-team-product-for="${esc(profile.id)}" value="${esc(code)}" ${codes.includes(code)?'checked':''}> <span>${esc(productLabel(code))}</span></label>`).join('');
         return `<div class="card card-pad team-role-card" data-team-user-card="${esc(profile.id)}">
           <div class="avatar">${esc(initials||'LF')}</div>
-          <div><span class="manager-label">${esc(backendRoleLabel(profile.role))} · ${esc(status)}</span><h3>${esc(name)}</h3><p>${esc(profile.email||profile.job_title||profile.username||'LFG workspace member')}</p></div>
+          <div><span class="manager-label">${esc(backendRoleLabel(profile.role))} · ${esc(status)}</span><h3>${esc(name)}</h3><p>${esc(profile.email||profile.job_title||profile.username||'LFG workspace member')}</p><div class="team-product-summary">Products: <strong>${esc(productsText(codes))}</strong></div></div>
           ${isAdmin&&profile.id!==current?.id?`<div class="role-permission-list">
             <select class="manager-select" data-team-role="${esc(profile.id)}">
               <option value="team_member" ${profile.role==='team_member'?'selected':''}>Outreach</option>
@@ -49,16 +57,17 @@ export const teamPage=()=>{
               <option value="head_operations" ${profile.role==='head_operations'?'selected':''}>Head of Operations</option>
               <option value="admin" ${profile.role==='admin'?'selected':''}>Admin</option>
             </select>
-            <button class="mini-action" data-team-access="approve" data-team-user="${esc(profile.id)}">${profile.approval_status==='approved'&&profile.is_active!==false?'Save role':'Approve'}</button>
+            <div class="team-product-editor">${editProductChecks}</div>
+            <button class="mini-action" data-team-access="approve" data-team-user="${esc(profile.id)}">${profile.approval_status==='approved'&&profile.is_active!==false?'Save access':'Approve'}</button>
             <button class="mini-action" data-team-access="reject" data-team-user="${esc(profile.id)}">Disable</button>
             <button class="mini-action" data-team-access="${profile.is_active===false?'reactivate':'deactivate'}" data-team-user="${esc(profile.id)}">${profile.is_active===false?'Reactivate':'Deactivate'}</button>
-          </div>`:`<div class="role-permission-list"><span>${esc(status)}</span><span>${esc(backendRoleLabel(profile.role))}</span></div>`}
+          </div>`:`<div class="role-permission-list"><span>${esc(status)}</span><span>${esc(backendRoleLabel(profile.role))}</span><span>${esc(productsText(codes))}</span></div>`}
         </div>`;
       }).join(''):'<div class="card card-pad"><div class="empty-mini">No team profiles yet.</div></div>'}
     </section>
 
     <section class="card card-pad team-comparison-card">
-      <div class="section-head"><div><h3 class="section-title">Outreach team comparison</h3></div></div>
+      <div class="section-head"><div><h3 class="section-title">Outreach team comparison</h3><div class="section-meta">Current product: ${esc(project)}</div></div></div>
       <div class="team-comparison-table">
         <div class="team-comparison-row team-comparison-head"><span>Team member</span><span>7d messages</span><span>7d replies</span><span>7d meetings</span><span>30d messages</span><span>30d replies</span><span>30d meetings</span><span></span></div>
         ${rows.length ? rows.map(row=>`<div class="team-comparison-row"><div><strong>${esc(row.owner)}</strong><small>Outreach</small></div><strong>${row.week.messages}</strong><strong>${row.week.replies}</strong><strong>${row.week.meetings}</strong><strong>${row.month.messages}</strong><strong>${row.month.replies}</strong><strong>${row.month.meetings}</strong><button class="mini-action" data-team-report="${esc(row.owner)}">View report ${icon('arrow')}</button></div>`).join('') : '<div class="empty-mini">No team activity yet.</div>'}

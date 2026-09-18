@@ -1,6 +1,6 @@
-import { getProject } from './projectState.js';
-import { getCurrentUser } from './authState.js';
-import { getHistoricalReference, getCompany, getActivities } from './crmState.js?v=20260918-registry1';
+import { getProject } from './projectState.js?v=20260918-major4';
+import { getCurrentUser } from './authState.js?v=20260918-major4';
+import { getHistoricalReference, getCompany, getActivities } from './crmState.js?v=20260918-major4';
 import { esc } from './html.js';
 import { formatDateTime } from './date.js?v=20260918-gmt4-1';
 

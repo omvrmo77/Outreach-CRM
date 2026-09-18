@@ -1,6 +1,6 @@
 import { backendConfig } from './backendConfig.js?v=20260918-gmt4-1';
-import { backendOperations } from './crmApi.js?v=20260918-registry1';
-import { getAccessToken, getCurrentUser } from './authState.js';
+import { backendOperations } from './crmApi.js?v=20260918-major4';
+import { getAccessToken, getCurrentUser } from './authState.js?v=20260918-major4';
 import {
   hydrateBackendState,
   mergeBackendCompanyBundle,
@@ -10,7 +10,7 @@ import {
   getRelationshipId,
   getCompany,
   getActivities
-} from './crmState.js?v=20260918-registry1';
+} from './crmState.js?v=20260918-major4';
 
 export const isBackendEnabled=()=>Boolean(backendConfig.enabled);
 
@@ -194,7 +194,8 @@ export const backendArchiveCompany=async(project,companyId)=>{
   return result;
 };
 
-export const backendTeam=async()=>backendOperations.team(await tokenOrThrow());
-export const backendInviteMember=async({email,fullName,role})=>backendOperations.inviteMember(await tokenOrThrow(),{email,fullName,role});
+export const backendInviteMember=async({email,fullName,role,productCodes=[]})=>backendOperations.inviteMember(await tokenOrThrow(),{email,fullName,role,productCodes});
 export const backendSetProfileAccess=async(payload)=>backendOperations.setProfileAccess(await tokenOrThrow(),payload);
+export const backendReportSummary=async({ownerUserId=null,startDate,endDate,productCodes=null})=>backendOperations.reportSummary(await tokenOrThrow(),{ownerUserId,startDate,endDate,productCodes});
+export const backendTeam=async()=>backendOperations.team(await tokenOrThrow());
 export const backendCheckBatch=async(project,items)=>backendOperations.checkBatch(await tokenOrThrow(),{productCode:project,items});

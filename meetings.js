@@ -1,9 +1,9 @@
-import { getProject } from './projectState.js';
-import { getMeetingRecords, getAccount } from './crmState.js?v=20260918-registry1';
+import { getProject } from './projectState.js?v=20260918-major4';
+import { getMeetingRecords, getAccount } from './crmState.js?v=20260918-major4';
 import { formatDateTime } from './date.js?v=20260918-gmt4-1';
 import { esc } from './html.js';
 import { currentOwner } from './access.js';
-import { isManagerAccount } from './authState.js';
+import { isManagerAccount } from './authState.js?v=20260918-major4';
 
 export const meetingsPage=()=>{
   const p=getProject();

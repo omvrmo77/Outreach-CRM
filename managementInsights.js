@@ -6,7 +6,7 @@ import {
   getActivityAnalytics,
   getActiveOwners,
   getNeedsAttention as getSharedNeedsAttention
-} from './crmState.js?v=20260918-registry1';
+} from './crmState.js?v=20260918-major4';
 import { withinRange } from './date.js?v=20260918-gmt4-1';
 
 const ownerMatch = (row, owner) => owner === 'ALL' || row.owner === owner;

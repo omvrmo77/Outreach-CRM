@@ -1,4 +1,4 @@
-import { canManage, getCurrentUser, isOutreachAccount } from './authState.js';
+import { canManage, getCurrentUser, isOutreachAccount } from './authState.js?v=20260918-major4';
 
 export const currentOwner = () => {
   const user = getCurrentUser();

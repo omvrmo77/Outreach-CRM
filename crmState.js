@@ -347,7 +347,7 @@ export const hydrateBackendState = (project,snapshot={}) => {
       company={
         id:rel.company_id,company:c.name||rel.company_name_snapshot||'Unknown company',contacts:[],primaryContactId:'',owner,
         agenda:rel.agenda||rel.lead_type||'—',projectSummary:rel.project_summary||'',whyInteresting:rel.why_interesting||'',
-        angle:rel.potential_lfg_angle||rel.product_angle||'',personality:ct.personality||'',fundingStatus:rel.funding_status||'',website:c.website||'',
+        angle:rel.potential_lfg_angle||rel.product_angle||'',personality:ct.personality||'',fundingStatus:rel.funding_status||'',outreachDirection:rel.outreach_direction||'',website:c.website||'',
         targetCategory:rel.target_category||'',priority:rel.priority||'',recommendedTiming:rel.recommended_timing||'',bestPlatform:rel.best_platform||'',
         primaryRoute:rel.primary_route||'',fallbackRoute:rel.fallback_route||'',whyThisContact:rel.why_this_contact||'',desiredOutcome:rel.desired_outcome||'',
         telegramUsername:ct.telegram_username||'',groupChat:rel.group_chat||'',notes:rel.notes||'',addedAt:c.registry_added_at||rel.created_at||c.created_at||'',registryAddedAt:c.registry_added_at||'',nextStep:rel.next_step||'Review relationship',
@@ -359,7 +359,7 @@ export const hydrateBackendState = (project,snapshot={}) => {
     if(!company.contacts.some(x=>x.id===rel.contact_id)){
       company.contacts.push({
         id:rel.contact_id,name:ct.full_name||rel.contact_name_snapshot||'—',role:ct.title||'',accountId:rel.outreach_account_id||'',createdAt:ct.created_at||rel.created_at||'',
-        relationshipId:rel.id,relationshipIds:(relByContact.get(rel.contact_id)||[]).map(x=>x.id),owner,ownerId:rel.owner_user_id||''
+        relationshipId:rel.id,relationshipIds:(relByContact.get(rel.contact_id)||[]).map(x=>x.id),owner,ownerId:rel.owner_user_id||'',direction:rel.outreach_direction||''
       });
     }
     if(!company.primaryContactId) company.primaryContactId=rel.contact_id||'';
@@ -397,7 +397,7 @@ export const hydrateBackendState = (project,snapshot={}) => {
     const owner=backendOwnerName(latestConnection.owner_user_id,latestConnection.historical_owner_name,profileMap);
     companyMap.set(c.id,{
       id:c.id,company:c.name||'Unknown company',contacts:companyContacts,primaryContactId:companyContacts[0]?.id||'',owner,
-      agenda:'—',projectSummary:'',whyInteresting:'',angle:'',personality:'',fundingStatus:'',website:c.website||'',
+      agenda:'—',projectSummary:'',whyInteresting:'',angle:'',personality:'',fundingStatus:'',outreachDirection:'',website:c.website||'',
       targetCategory:'',priority:'',recommendedTiming:'',bestPlatform:'',primaryRoute:'',fallbackRoute:'',whyThisContact:'',desiredOutcome:'',
       telegramUsername:'',groupChat:'',notes:c.notes||'',addedAt:c.registry_added_at||c.created_at||'',registryAddedAt:c.registry_added_at||'',
       nextStep:'Complete outreach details',status:latestConnection.status||'Connection Added',local:false,provisional:true,deletedAt:null,relationshipIds:[]
@@ -588,7 +588,7 @@ export const mergeBackendCompanyBundle = (project,companyId,bundle={}) => {
       company={
         id:companyId,company:c.name||rel.company_name_snapshot||getRawCompany(project,companyId)?.company||'Unknown company',contacts:[],primaryContactId:'',owner,
         agenda:rel.agenda||rel.lead_type||'—',projectSummary:rel.project_summary||'',whyInteresting:rel.why_interesting||'',
-        angle:rel.potential_lfg_angle||rel.product_angle||'',personality:ct.personality||'',fundingStatus:rel.funding_status||'',website:c.website||'',
+        angle:rel.potential_lfg_angle||rel.product_angle||'',personality:ct.personality||'',fundingStatus:rel.funding_status||'',outreachDirection:rel.outreach_direction||'',website:c.website||'',
         targetCategory:rel.target_category||'',priority:rel.priority||'',recommendedTiming:rel.recommended_timing||'',bestPlatform:rel.best_platform||'',
         primaryRoute:rel.primary_route||'',fallbackRoute:rel.fallback_route||'',whyThisContact:rel.why_this_contact||'',desiredOutcome:rel.desired_outcome||'',
         telegramUsername:ct.telegram_username||'',groupChat:rel.group_chat||'',notes:rel.notes||'',addedAt:rel.created_at||'',nextStep:rel.next_step||'Review relationship',
@@ -599,7 +599,7 @@ export const mergeBackendCompanyBundle = (project,companyId,bundle={}) => {
     if(!company.contacts.some(x=>x.id===rel.contact_id)){
       company.contacts.push({
         id:rel.contact_id,name:ct.full_name||rel.contact_name_snapshot||'—',role:ct.title||'',accountId:rel.outreach_account_id||'',createdAt:ct.created_at||rel.created_at||'',
-        relationshipId:rel.id,relationshipIds:(relByContact.get(rel.contact_id)||[]).map(x=>x.id),owner,ownerId:rel.owner_user_id||''
+        relationshipId:rel.id,relationshipIds:(relByContact.get(rel.contact_id)||[]).map(x=>x.id),owner,ownerId:rel.owner_user_id||'',direction:rel.outreach_direction||''
       });
     }
     if(!company.primaryContactId) company.primaryContactId=rel.contact_id||'';
@@ -621,7 +621,7 @@ export const mergeBackendCompanyBundle = (project,companyId,bundle={}) => {
     company={
       id:companyId,company:c.name||'Unknown company',contacts:contactList,primaryContactId:contactList[0]?.id||'',
       owner:backendOwnerName(latestConnection.owner_user_id,latestConnection.historical_owner_name,profileMap),
-      agenda:'—',projectSummary:'',whyInteresting:'',angle:'',personality:'',fundingStatus:'',website:c.website||'',
+      agenda:'—',projectSummary:'',whyInteresting:'',angle:'',personality:'',fundingStatus:'',outreachDirection:'',website:c.website||'',
       targetCategory:'',priority:'',recommendedTiming:'',bestPlatform:'',primaryRoute:'',fallbackRoute:'',whyThisContact:'',desiredOutcome:'',
       telegramUsername:'',groupChat:'',notes:c.notes||'',addedAt:c.registry_added_at||c.created_at||'',registryAddedAt:c.registry_added_at||'',
       nextStep:'Complete outreach details',status:latestConnection.status||'Connection Added',local:false,provisional:true,deletedAt:null,relationshipIds:[]
@@ -750,7 +750,7 @@ const createCompanyRow = (project, parsed,{company,contact,owner,accountId,at,pr
     status:'Company Added',owner,agenda:parsed.Agenda||parsed['Lead Type']||'—',
     projectSummary:parsed['Project Summary']||'',whyInteresting:parsed['Why Interesting']||'',
     angle:parsed['Potential LFG Angle']||parsed['Potential LFG Angle:']||parsed['01 Angle']||parsed['O1 Angle']||'',
-    personality:parsed.Personality||'',fundingStatus:parsed['Funding Status']||'',website:parsed.Website||'',
+    personality:parsed.Personality||'',fundingStatus:parsed['Funding Status']||'',outreachDirection:String(parsed.Direction||parsed['Outreach Direction']||'').toLowerCase(),website:parsed.Website||'',
     targetCategory:parsed['Target Category']||'',priority:parsed.Priority||'',recommendedTiming:parsed['Recommended Timing']||'',
     bestPlatform:parsed['Best Platform']||'',primaryRoute:parsed['Primary Route']||'',fallbackRoute:parsed['Fallback Route']||'',
     whyThisContact:parsed['Why This Contact']||'',desiredOutcome:parsed['Desired Outcome']||'',
@@ -763,7 +763,7 @@ const applyParsedCompanyDetails=(raw,parsed)=>{
   const fields={
     agenda:parsed.Agenda||parsed['Lead Type'],projectSummary:parsed['Project Summary'],whyInteresting:parsed['Why Interesting'],
     angle:parsed['Potential LFG Angle']||parsed['Potential LFG Angle:']||parsed['01 Angle']||parsed['O1 Angle'],
-    personality:parsed.Personality,fundingStatus:parsed['Funding Status'],website:parsed.Website,targetCategory:parsed['Target Category'],
+    personality:parsed.Personality,fundingStatus:parsed['Funding Status'],outreachDirection:String(parsed.Direction||parsed['Outreach Direction']||'').toLowerCase()||undefined,website:parsed.Website,targetCategory:parsed['Target Category'],
     priority:parsed.Priority,recommendedTiming:parsed['Recommended Timing'],bestPlatform:parsed['Best Platform'],primaryRoute:parsed['Primary Route'],
     fallbackRoute:parsed['Fallback Route'],whyThisContact:parsed['Why This Contact'],desiredOutcome:parsed['Desired Outcome'],
     telegramUsername:parsed['Telegram Username']||parsed['TG Username'],groupChat:parsed['Group Chat'],notes:parsed.Notes

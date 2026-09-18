@@ -1,6 +1,6 @@
-import { getProject } from './projectState.js';
+import { getProject } from './projectState.js?v=20260918-major4';
 import { icon } from './icons.js';
-import { getAccounts, getSelectedAccount } from './crmState.js?v=20260918-registry1';
+import { getAccounts, getSelectedAccount } from './crmState.js?v=20260918-major4';
 import { toLocalDateInputValue, getDeviceTimeValue, getDeviceTimeZone, getWorkspaceDateKey, formatWorkspaceDateKey, timeParts12h, hourOptions12h, minuteOptions, periodOptions } from './date.js?v=20260918-gmt4-1';
 
 export const addCompanyPage = () => {
@@ -27,17 +27,19 @@ export const addCompanyPage = () => {
         <label class="same-name-contact-confirm hidden" id="same-name-contact-confirm"><input type="checkbox" id="force-new-contact"> <span>This is a different person who happens to have the same name and role.</span></label>
         <div class="parsed-fields" id="company-parsed-fields"><div class="empty-mini">Paste the details and press <strong>Read details</strong>.</div></div>
 
+        <div class="field hidden" id="company-direction-wrap"><label>Direction</label><select id="company-direction" required><option value="">Choose inbound or outbound</option><option value="outbound">Outbound · we contacted them first</option><option value="inbound">Inbound · they contacted us first</option></select><small class="field-help">Required. This records who started the relationship.</small></div>
+
         <div class="field hidden" id="company-account-wrap"><label>Account used</label><select id="company-account">${accountOptions}</select><small class="field-help">A matching pending connection will select its account automatically.</small></div>
 
         <div class="initial-message-panel hidden" id="initial-message-panel">
-          <div class="required-message-head"><strong>First message sent</strong><small>A company is saved only together with the first outreach message you actually sent.</small></div>
+          <div class="required-message-head"><strong id="initial-message-title">First conversation message</strong><small id="initial-message-copy">Choose Inbound or Outbound so the CRM records this message correctly.</small></div>
           <div class="message-actual-time">
-            <div class="field"><label>Message sent date</label><input id="initial-message-date" type="date" value="${toLocalDateInputValue(now)}"></div>
-            <div class="field"><label>Message sent time</label><div class="time-part-picker"><select id="initial-message-hour">${hourOptions12h(nowParts.hour)}</select><span class="time-colon">:</span><select id="initial-message-minute">${minuteOptions(nowParts.minute)}</select><select id="initial-message-period">${periodOptions(nowParts.period)}</select></div></div>
+            <div class="field"><label id="initial-message-date-label">Message date</label><input id="initial-message-date" type="date" value="${toLocalDateInputValue(now)}"></div>
+            <div class="field"><label id="initial-message-time-label">Message time</label><div class="time-part-picker"><select id="initial-message-hour">${hourOptions12h(nowParts.hour)}</select><span class="time-colon">:</span><select id="initial-message-minute">${minuteOptions(nowParts.minute)}</select><select id="initial-message-period">${periodOptions(nowParts.period)}</select></div></div>
           </div>
           <div class="local-time-help">Your device time: <strong>${getDeviceTimeZone()}</strong>. The exact timestamp is always preserved.</div>
           <div class="field workday-field"><label>Count toward workday</label><input id="initial-message-workday" type="date" value="${getWorkspaceDateKey(now)}"><small>The reporting day only. This never changes the real message timestamp.</small></div>
-          <div class="field"><label>Message sent</label><textarea id="initial-message-body" placeholder="Paste the exact message that was sent." required></textarea><small class="field-help">Required. This becomes the first message in the relationship timeline.</small></div>
+          <div class="field"><label id="initial-message-body-label">Message</label><textarea id="initial-message-body" placeholder="Paste the exact first message." required></textarea><small class="field-help" id="initial-message-help">Required. This becomes the first message in the relationship timeline.</small></div>
         </div>
 
         <button class="button primary full-button" id="save-company" disabled>${icon('plus')} Add company + message</button>

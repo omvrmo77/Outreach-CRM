@@ -117,7 +117,9 @@ const applyProfile=(profile)=>{
     roleLabel:roleLabelFor(profile),
     ownerName:displayName,
     approvalStatus:profile.approval_status,
-    jobTitle:profile.job_title||''
+    jobTitle:profile.job_title||'',
+    productCodes:Array.isArray(profile.product_codes)?profile.product_codes.map(String):[],
+    products:Array.isArray(profile.products)?profile.products.map(x=>({...x})):[]
   };
   authenticated=true;
 };
@@ -205,6 +207,9 @@ export const hasAuthSession=()=>Boolean(session?.access_token);
 export const getPendingProfile=()=>pendingProfile;
 export const isAuthenticated=()=>authenticated;
 export const getCurrentUser=()=>currentUser;
+
+export const getAccessibleProductCodes=()=>Array.isArray(currentUser?.productCodes)?[...currentUser.productCodes]:[];
+export const canAccessProduct=(code)=>getAccessibleProductCodes().includes(String(code||''));
 export const canManage=()=>['admin','manager'].includes(currentUser?.role);
 export const isManagerAccount=()=>currentUser?.role==='manager';
 export const isOutreachAccount=()=>currentUser?.role==='outreach';

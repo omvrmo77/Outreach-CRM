@@ -1,8 +1,8 @@
-import { getProject } from './projectState.js';
-import { getFollowupRecords } from './crmState.js?v=20260918-registry1';
+import { getProject } from './projectState.js?v=20260918-major4';
+import { getFollowupRecords } from './crmState.js?v=20260918-major4';
 import { esc } from './html.js';
 import { currentOwner } from './access.js';
-import { isManagerAccount } from './authState.js';
+import { isManagerAccount } from './authState.js?v=20260918-major4';
 import { formatDateTime, getWorkspaceDateKey } from './date.js?v=20260918-gmt4-1';
 
 const followupState = (record, now=new Date()) => {

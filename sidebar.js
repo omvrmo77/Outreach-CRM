@@ -1,5 +1,5 @@
 import { icon } from './icons.js';
-import { getCurrentUser, canManage, isManagerAccount, isOutreachAccount } from './authState.js';
+import { getCurrentUser, canManage, isManagerAccount, isOutreachAccount } from './authState.js?v=20260918-major4';
 
 const allItems = [
   ['home','Home','home'],

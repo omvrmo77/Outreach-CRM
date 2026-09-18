@@ -1,4 +1,4 @@
-import { canManage } from './authState.js';
+import { canManage } from './authState.js?v=20260918-major4';
 
 const lockedSelect = (label, value, note='Configured when the backend is connected.') => `<div class="field"><label>${label}</label><select disabled aria-disabled="true"><option>${value}</option></select><small class="field-help">${note}</small></div>`;
 

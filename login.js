@@ -1,5 +1,5 @@
 import { icon } from './icons.js';
-import { getInviteToken, getVerificationReturn } from './authState.js';
+import { getInviteToken, getVerificationReturn } from './authState.js?v=20260918-major4';
 
 export const loginPage = () => {
   const inviteToken=getInviteToken();

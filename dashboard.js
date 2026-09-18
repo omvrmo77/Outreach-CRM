@@ -1,12 +1,12 @@
-import { getProject } from './projectState.js';
+import { getProject } from './projectState.js?v=20260918-major4';
 import { getManagerFilters } from './managerState.js';
 import { rangeLabels } from './uiConfig.js';
 import { metricCard } from './metricCard.js';
 import { icon } from './icons.js';
-import { getActiveOwners, getDashboardMetrics, getWeeklyActivity, getFilteredActivities, getCompanies, getAccount, getActivityDetail } from './crmState.js?v=20260918-registry1';
+import { getActiveOwners, getDashboardMetrics, getWeeklyActivity, getFilteredActivities, getCompanies, getAccount, getActivityDetail } from './crmState.js?v=20260918-major4';
 import { formatDateTime, formatCompactDateTime } from './date.js?v=20260918-gmt4-1';
 import { esc } from './html.js';
-import { getCurrentUser, canManage, isManagerAccount } from './authState.js';
+import { getCurrentUser, canManage, isManagerAccount } from './authState.js?v=20260918-major4';
 import { currentOwner, visibleOwnerOptions } from './access.js';
 
 const ownerOptions = (selected) => visibleOwnerOptions(getActiveOwners())

@@ -1,5 +1,5 @@
-import { getProject } from './projectState.js';
-import { getNoRepeatCompanies } from './crmState.js?v=20260918-registry1';
+import { getProject } from './projectState.js?v=20260918-major4';
+import { getNoRepeatCompanies } from './crmState.js?v=20260918-major4';
 import { icon } from './icons.js';
 
 export const masterListPage = () => {

@@ -1,9 +1,9 @@
-import { getProject } from './projectState.js';
-import { getCompanies } from './crmState.js?v=20260918-registry1';
+import { getProject } from './projectState.js?v=20260918-major4';
+import { getCompanies } from './crmState.js?v=20260918-major4';
 import { companiesTable } from './dataTable.js';
 import { icon } from './icons.js';
 import { filterOwnedRows, isPersonalOutreachView } from './access.js';
-import { isManagerAccount } from './authState.js';
+import { isManagerAccount } from './authState.js?v=20260918-major4';
 
 export const companiesPage = () => {
   const p=getProject();

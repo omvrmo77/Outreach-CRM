@@ -1,10 +1,10 @@
-import { getProject } from './projectState.js';
-import { accounts, getSelectedAccount, getConnections, getAccount, getCompanies, getHistoricalConnectionPaging } from './crmState.js?v=20260918-registry1';
+import { getProject } from './projectState.js?v=20260918-major4';
+import { accounts, getSelectedAccount, getConnections, getAccount, getCompanies, getHistoricalConnectionPaging } from './crmState.js?v=20260918-major4';
 import { icon } from './icons.js';
 import { formatDateTime, formatDeviceDateTime, toLocalDateInputValue, getDeviceTimeValue, getDeviceTimeZone, getWorkspaceDateKey, timeParts12h, hourOptions12h, minuteOptions, periodOptions } from './date.js?v=20260918-gmt4-1';
 import { esc } from './html.js';
 import { filterOwnedRows } from './access.js';
-import { isManagerAccount } from './authState.js';
+import { isManagerAccount } from './authState.js?v=20260918-major4';
 
 const accountCard = (a, selected) => `<button class="account-choice ${selected===a.id?'selected':''}" data-account-select="${a.id}">
   <span class="account-platform">${a.platform}</span><strong>${esc(a.owner)}</strong><small>${selected===a.id?'Selected':'Use this account'}</small>
